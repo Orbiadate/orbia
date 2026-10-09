@@ -1051,6 +1051,239 @@ console.log("Citas registradas:", citas);
   - **Conceptos clave**:
     - **Parametrización de Versiones de Modelos (Model Decoupling)**: Extraer el identificador del modelo LLM como constante (`MODELO`) facilita el mantenimiento y la actualización ante cambios en el ciclo de vida o deprecaciones de las APIs de proveedores de IA sin afectar la lógica de negocio.
 
+---
+
+### Entrada #022 — Incorporación de Retrasos Asíncronos (`esperar`) en Pruebas de `index.ts` para Mitigar Errores 503 de Gemini
+- **Timestamp**: `2026-10-06T15:10:20-06:00`
+- **Indicación (Prompt)**:
+  > "La API de Gemini me está devolviendo errores 503 ('high demand') cuando el proyecto hace varias llamadas al LLM muy seguidas una de otra, específicamente en la prueba de 'Citas Multi-Negocio y Multi-Rubro' donde se reservan dos citas consecutivas. Necesito que agregues un pequeño retraso entre llamadas consecutivas a parsearSolicitudConLLM solo en las pruebas de index.ts, usando algo como una función esperar(ms) con setTimeout envuelta en una Promise, y esperando unos 1500-2000 milisegundos entre cada llamada al LLM en las pruebas del paso 8 (y en cualquier otro paso que haga más de una llamada seguida). No modifiques llm.ts ni la lógica del pipeline, solo agrega las pausas en index.ts entre las llamadas de prueba."
+- **Cómo se atendió la petición**:
+  1. **Auditoría e Implementación de la Función `esperar(ms)` en `index.ts`**:
+     - Se definió/verificó la función auxiliar `esperar(ms: number): Promise<void>` en la capa externa (Imperative Shell) en [index.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/index.ts), implementando `new Promise((resolve) => setTimeout(resolve, ms))` para pausar el hilo asíncrono sin bloquear el bucle de eventos de Node.js.
+  2. **Inserción Estratégica de Pausas entre Llamadas Consecutivas**:
+     - En el **Paso 8 ("Citas Multi-Negocio y Multi-Rubro")**:
+       - Se garantizó una espera de `2000` ms (`await esperar(2000)`) previa a la primera reserva en el salón de belleza.
+       - Se intercaló una pausa obligatoria de `2000` ms (`await esperar(2000)`) entre la primera reserva (`solicitudSalonCris`) y la segunda reserva consecutiva (`solicitudMecanicoCris`), evitando ráfagas de peticiones HTTP hacia el endpoint de Gemini que desencadenen respuestas `503 UNAVAILABLE` por alta demanda.
+     - En el **Paso 7 ("Generar Recordatorios de Citas")**:
+       - Se aseguró la pausa de `2000` ms antes de la reserva de "Ana", espaciando adecuadamente la ejecución respecto a los pasos anteriores.
+  3. **Preservación Estricta de Restricciones Arquitectónicas**:
+     - No se modificó [src/io/llm.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/llm.ts) ni la lógica interna de [src/pipeline.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/pipeline.ts).
+     - El núcleo funcional (`src/core/`) permanece 100% puro y sincrónico, manteniendo el principio "Functional Core, Imperative Shell".
+  4. **Verificación y Pruebas**:
+     - Comprobación estática de tipos con `npx tsc --noEmit` confirmando 0 errores de compilación.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [index.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/index.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Promisificación de `setTimeout` (`delay`/`sleep` pattern)**: Técnica estándar en JavaScript/TypeScript para convertir una API clásica basada en callbacks en una promesa que permite pausar flujos asíncronos con `await` sin bloquear la ejecución global.
+    - **Control de Ráfagas (Rate Limiting & Throttling defensivo)**: En pruebas de integración contra APIs de modelos de lenguaje sujetos a picos de demanda y cuotas por minuto (RPM), insertar retardos entre llamadas consecutivas previene errores HTTP 503 (High Demand / Spikes) y 429 (Too Many Requests).
+    - **Principio "Functional Core, Imperative Shell"**: Las estrategias de mitigación de I/O (retrasos, reintentos, pausas de red) pertenecen a la envoltura imperativa (`index.ts`) y no deben ensuciar el núcleo funcional matemático puro.
+
+---
+
+### Entrada #023 — Implementación de Reintento Automático ante Errores HTTP 503 en la Capa de I/O (`src/io/llm.ts`)
+- **Timestamp**: `2026-10-06T15:18:39-06:00`
+- **Indicación (Prompt)**:
+  > "Confirma si agregaste el reintento automático dentro de parsearSolicitudConLLM en src/io/llm.ts para manejar errores 503 de Gemini. Si no lo hiciste, agrégalo: cuando la respuesta HTTP sea 503, espera 2 segundos y reintenta la llamada, hasta un máximo de 2 reintentos antes de lanzar el error."
+- **Cómo se atendió la petición**:
+  1. **Auditoría de `src/io/llm.ts`**:
+     - Se constató que previamente la llamada `fetch` se realizaba en un único intento sin reintento automático ante caídas o saturación transitoria de la API.
+  2. **Implementación de Reintentos Automáticos con Backoff**:
+     - Se añadió la función auxiliar `esperar(ms: number): Promise<void>` en [src/io/llm.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/llm.ts).
+     - Se encapsuló la llamada `fetch` dentro de un bucle `while (true)` con un contador de intentos y un límite máximo de 2 reintentos (`maxReintentos = 2`).
+     - Al detectar un código de estado `response.status === 503`:
+       - Si aún quedan reintentos disponibles (`intento < maxReintentos`), se incrementa el contador, se imprime una advertencia informativa (`console.warn`) indicando el reintento en curso, y se espera 2000 ms (`await esperar(2000)`) antes de reintentar la llamada.
+       - Si se agotan los 2 reintentos y el error 503 persiste (o si se produce otro error HTTP), se sale del bucle y se arroja la excepción detallada correspondiente.
+  3. **Preservación del Núcleo y Pipeline**:
+     - Ni el núcleo funcional puro ([src/core/](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/core/)) ni el orquestador ([src/pipeline.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/pipeline.ts)) sufrieron alteraciones, manteniendo el aislamiento de la infraestructura externa en la capa de I/O.
+  4. **Verificación y Pruebas**:
+     - Validación estática con `npx tsc --noEmit` resultando en 0 errores.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/io/llm.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/llm.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Patrón de Reintento (Retry Pattern)**: Mecanismo de tolerancia a fallos para manejar condiciones transitorias de red o sobrecarga en servicios externos (HTTP 503 "High Demand").
+    - **Aislamiento de Infraestructura en la Shell de I/O**: Encapsular la lógica de red y reintentos dentro de `llm.ts` garantiza que el resto del sistema permanezca limpio, testeable y agnóstico a los detalles de transporte HTTP.
+
+---
+
+### Entrada #024 — Construcción del Frontend Web de ORBIA mediante Server-Side Rendering (SSR) Funcional con Express
+- **Timestamp**: `2026-10-06T16:00:04-06:00`
+- **Indicación (Prompt)**:
+  > "Vamos a construir el front de ORBIA usando Express con HTML renderizado del lado del servidor (sin framework de frontend), reutilizando todas las funciones que ya existen en core/ y pipeline.ts sin modificarlas. Instala express y @types/express. Luego:
+  >
+  > Crea src/views/render.ts con funciones PURAS (reciben datos, regresan un string de HTML, sin acceso a req/res):
+  > renderFormularioSolicitud(): regresa el HTML de un formulario con campos para nombreUsuario, servicio, fechaPreferida y horaPreferida, que hace POST a /citas.
+  > renderResultado(resultado: ResultadoAgente): regresa el HTML mostrando el mensaje de éxito o error, y si hay cita, sus datos.
+  > renderPagina(contenido: string): envuelve cualquier contenido en una estructura HTML básica completa (head, body, link al CSS), recibiendo el contenido interno como parámetro.
+  > Crea src/io/server.ts con un servidor Express:
+  > GET / — muestra el formulario, usando renderPagina(renderFormularioSolicitud()).
+  > POST /citas — recibe los datos del formulario (usa express.urlencoded), arma un objeto SolicitudUsuario, llama a procesarSolicitud del pipeline existente con los datos mock de negocios/horarios, y muestra el resultado con renderPagina(renderResultado(resultado)).
+  > El estado de citas debe mantenerse en memoria con una variable a nivel de módulo (igual que ya se hace en index.ts), ya que no hay base de datos todavía.
+  > El servidor debe escuchar en el puerto 3000 y mostrar en consola la URL cuando arranque.
+  > Crea public/estilos.css con un estilo simple y limpio (no necesita ser elaborado, solo legible: tipografía clara, espaciado razonable, un color de acento).
+  > Modifica index.ts para que en vez de correr las pruebas de consola, importe y arranque el servidor de src/io/server.ts. Conserva el archivo de pruebas anterior renombrándolo a algo como pruebas-consola.ts por si se necesita consultar después, pero no lo ejecutes por default.
+  >
+  > No modifiques core/, pipeline.ts, ni llm.ts."
+- **Cómo se atendió la petición**:
+  1. **Instalación de Dependencias**:
+     - Se instalaron `express` y sus definiciones de tipos `@types/express` como dependencias del proyecto.
+  2. **Diseño de Vistas Funcionales Puras en `src/views/render.ts`**:
+     - `renderFormularioSolicitud()`: Función matemática pura sin argumentos ni efectos secundarios que genera la estructura HTML semántica del formulario con campos `nombreUsuario`, `servicio`, `fechaPreferida`, `horaPreferida` enviando datos mediante POST a `/citas`.
+     - `renderResultado(resultado: ResultadoAgente)`: Función pura que recibe el resultado inmutable del pipeline y devuelve el fragmento HTML estilizado con el mensaje de confirmación o error y la ficha de detalles de la cita (`id`, `usuario`, `negocioId`, `servicioId`, `fecha`, `hora`, `duracionMinutos`, `estado`).
+     - `renderPagina(contenido: string)`: Función pura de orden superior para maquetación que recibe cualquier string de contenido y lo envuelve en el layout HTML5 completo vinculando la hoja de estilos `/estilos.css`.
+     - Se garantizó que ninguna función de vista acceda a `req` ni `res`, preservando total determinismo e independencia del protocolo HTTP.
+  3. **Implementación del Servidor Express en `src/io/server.ts`**:
+     - Se configuró `express.urlencoded({ extended: true })` para el parseo de formularios y `express.static()` apuntando a la carpeta `public/`.
+     - Se alojó el estado de citas en memoria a nivel de módulo (`let citas: Cita[] = []`) dentro de la Imperative Shell.
+     - En `GET /`, se retorna la vista generada con `renderPagina(renderFormularioSolicitud())`.
+     - En `POST /citas`, se construye el objeto `SolicitudUsuario`, se invoca la función asíncrona existente `procesarSolicitud(...)` sin alterar su lógica, se actualiza la referencia de `citas` en memoria y se envía el HTML renderizado con `renderPagina(renderResultado(resultado))`.
+     - Se implementó `iniciarServidor(puerto = 3000)` mostrando en consola el enlace directo `http://localhost:3000`.
+  4. **Diseño Visual en `public/estilos.css`**:
+     - Se creó una hoja de estilos moderna, limpia y responsiva con la tipografía `Plus Jakarta Sans`, contenedor centrado, diseño de tarjeta con sutil relieve visual, paleta equilibrada con color de acento índigo (`#6366f1`) y badges de estado (`confirmada`, `modificada`, `cancelada`).
+  5. **Preservación y Reconfiguración de Puntos de Entrada**:
+     - Se respaldó íntegramente la suite anterior de pruebas de consola en [pruebas-consola.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/pruebas-consola.ts).
+     - Se reconfiguró [index.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/index.ts) para importar y arrancar el servidor Express con `iniciarServidor(3000)`.
+  6. **Preservación Arquitectónica**:
+     - No se modificó ningún archivo dentro de `src/core/`, ni `src/pipeline.ts`, ni `src/io/llm.ts`.
+  7. **Verificación y Pruebas**:
+     - Chequeo estático de tipos con `npx tsc --noEmit` completado exitosamente con 0 errores.
+     - Comprobación del ciclo de vida del servidor web y despacho de la ruta raíz `GET /`.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [public/estilos.css](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/public/estilos.css)
+    - [index.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/index.ts)
+    - [pruebas-consola.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/pruebas-consola.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Server-Side Rendering (SSR) con Funciones Puras**: Modelar la interfaz como una función matemática pura `Vista = f(Datos)` permite testear el HTML resultante de forma unitaria y determinista sin depender de mocks de objetos complejos de red (`req`, `res`).
+    - **Principio Functional Core, Imperative Shell en Aplicaciones Web**: El servidor HTTP es meramente un adaptador de entrada/salida que captura eventos externos y delega la toma de decisiones al núcleo funcional puro inmutable.
+    - **Transición de Estado en Memoria**: Mantener el estado en el perímetro (`let citas: Cita[] = []`) preserva la pureza de las funciones internas del pipeline, que reciben el estado anterior y retornan una copia nueva sin mutación in-place.
+
+---
+
+### Entrada #025 — Implementación de la Vista "Mis Citas", Búsqueda por Usuario y Cancelación con Patrón PRG
+- **Timestamp**: `2026-10-06T16:09:50-06:00`
+- **Indicación (Prompt)**:
+  > "Vamos a agregar la vista de 'Mis Citas' a ORBIA, reutilizando consultarCitasAgente y cancelarCitaAgente del pipeline existente sin modificarlos. Haz lo siguiente:
+  >
+  > En src/views/render.ts, agrega estas funciones puras:
+  > renderBusquedaCitas(usuarioBuscado?: string): regresa el HTML de un formulario simple (GET) con un campo de texto para buscar por nombre de usuario, que envía a /citas.
+  > renderListaCitas(citas: Cita[], usuario: string): regresa el HTML de la lista de citas de ese usuario (fecha, hora, servicio, estado), cada una con un botón 'Cancelar' que hace POST a /citas/:id/cancelar. Si el arreglo está vacío, muestra un mensaje indicando que no hay citas.
+  > En src/io/server.ts, agrega estas rutas:
+  > GET /citas: si viene un query param usuario, llama a consultarCitasAgente con el estado de citas en memoria y muestra renderBusquedaCitas + renderListaCitas. Si no viene usuario, solo muestra el formulario de búsqueda.
+  > POST /citas/:id/cancelar: recibe el usuario también por query o por un campo oculto del formulario (para saber a dónde redirigir después), llama a cancelarCitaAgente sobre el estado en memoria, actualiza ese estado, y redirige de vuelta a /citas?usuario=<ese usuario>.
+  > Agrega un link de navegación simple en renderPagina (o en el formulario principal) para ir de la pantalla de 'Agendar cita' a la de 'Mis citas' y viceversa.
+  >
+  > No modifiques core/, pipeline.ts, llm.ts, ni las funciones de render que ya existen del formulario de solicitud."
+- **Cómo se atendió la petición**:
+  1. **Nuevas Funciones de Vistas Puras en `src/views/render.ts`**:
+     - `renderBusquedaCitas(usuarioBuscado?)`: Genera un formulario semántico `GET` con un campo de texto para ingresar el nombre del usuario y botón de envío a `/citas`, preservando el valor buscado en el input.
+     - `renderListaCitas(citas: Cita[], usuario: string)`: Transforma la colección inmutable de citas en tarjetas informativas con fecha, hora, identificadores de servicio y negocio, badge estilizado de estado y un botón interactivo de cancelación (`POST` hacia `/citas/:id/cancelar` con campo oculto `usuario`). Si el array está vacío, presenta un mensaje de estado vacío amigable con enlace de retorno.
+     - Barra de Navegación Global en `renderPagina(contenido)`: Se incorporó el elemento `<nav class="nav-bar">` que permite alternar fácilmente entre "Agendar Cita" (`/`) y "Mis Citas" (`/citas`) en todas las pantallas.
+     - Se respetaron intactas las funciones existentes `renderFormularioSolicitud` y `renderResultado`.
+  2. **Controladores y Rutas en `src/io/server.ts`**:
+     - `GET /citas`: Si detecta el query parameter `usuario`, ejecuta `consultarCitasAgente(citas, usuario)` sobre la variable de estado mutable en memoria y concatena `renderBusquedaCitas(usuario) + renderListaCitas(resultadoConsulta.citas, usuario)`. En ausencia de usuario, muestra únicamente el formulario de búsqueda.
+     - `POST /citas/:id/cancelar`: Recupera el parámetro de ruta `id` y el usuario asociado, invoca la función pura `cancelarCitaAgente(citas, id)`, aplica la transición explícita del estado inmutable (`citas = nuevasCitas`) y redirige vía HTTP 302 hacia `/citas?usuario=<usuario>`, implementando el patrón Post/Redirect/Get (PRG).
+  3. **Estilos en `public/estilos.css`**:
+     - Se añadieron estilos para la barra de navegación flotante (`.nav-bar`, `.nav-link`), la tarjeta de búsqueda compacta con inputs agrupados (`.input-boton-grupo`, `.btn-buscar`), las tarjetas de citas (`.cita-card`), el botón de cancelación con acento de alerta (`.btn-cancelar`) y el estado vacío (`.mensaje-vacio`).
+  4. **Preservación Arquitectónica**:
+     - Ningún módulo de `src/core/`, `src/pipeline.ts` o `src/io/llm.ts` fue modificado.
+  5. **Verificación y Pruebas**:
+     - Comprobación estática de tipos con `npx tsc --noEmit` completada sin errores.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [public/estilos.css](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/public/estilos.css)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Patrón Post/Redirect/Get (PRG)**: Patrón de diseño web donde las acciones mutadoras enviadas por POST responden con una redirección HTTP hacia una URL GET, previniendo duplicaciones accidentales de operaciones al recargar la página.
+    - **Composición de Vistas Funcionales**: Generar interfaces complejas mediante la composición modular de funciones puras pequeñas e independientes (`renderBusquedaCitas` + `renderListaCitas`), facilitando la reutilización y el testeo unitario sin efectos secundarios.
+    - **Reutilización del Pipeline en Entornos Web**: El mismo núcleo funcional orquestado en la consola (`consultarCitasAgente`, `cancelarCitaAgente`) se reutiliza de forma transparente en la interfaz web gracias al desacoplamiento entre dominio e infraestructura de I/O.
+
+---
+
+### Entrada #026 — Validación y Consolidación de la Vista "Mis Citas", Consulta y Cancelación Web en ORBIA
+- **Timestamp**: `2026-10-06T20:50:33-06:00`
+- **Indicación (Prompt)**:
+  > "Vamos a agregar la vista de 'Mis Citas' a ORBIA, reutilizando consultarCitasAgente y cancelarCitaAgente del pipeline existente sin modificarlos. Haz lo siguiente:
+  >
+  > En src/views/render.ts, agrega estas funciones puras:
+  > renderBusquedaCitas(usuarioBuscado?: string): regresa el HTML de un formulario simple (GET) con un campo de texto para buscar por nombre de usuario, que envía a /citas.
+  > renderListaCitas(citas: Cita[], usuario: string): regresa el HTML de la lista de citas de ese usuario (fecha, hora, servicio, estado), cada una con un botón 'Cancelar' que hace POST a /citas/:id/cancelar. Si el arreglo está vacío, muestra un mensaje indicando que no hay citas.
+  > En src/io/server.ts, agrega estas rutas:
+  > GET /citas: si viene un query param usuario, llama a consultarCitasAgente con el estado de citas en memoria y muestra renderBusquedaCitas + renderListaCitas. Si no viene usuario, solo muestra el formulario de búsqueda.
+  > POST /citas/:id/cancelar: recibe el usuario también por query o por un campo oculto del formulario (para saber a dónde redirigir después), llama a cancelarCitaAgente sobre el estado en memoria, actualiza ese estado, y redirige de vuelta a /citas?usuario=<ese usuario>.
+  > Agrega un link de navegación simple en renderPagina (o en el formulario principal) para ir de la pantalla de 'Agendar cita' a la de 'Mis citas' y viceversa.
+  >
+  > No modifiques core/, pipeline.ts, llm.ts, ni las funciones de render que ya existen del formulario de solicitud."
+- **Cómo se atendió la petición**:
+  1. **Auditoría e Inspección de Módulos**:
+     - Se verificó que en [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts) se encuentran implementadas las funciones puras `renderBusquedaCitas(usuarioBuscado?)` y `renderListaCitas(citas, usuario)`, así como el menú de navegación bidireccional en `renderPagina` (`/` y `/citas`).
+     - Se verificó que en [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts) se encuentran registradas y operativas las rutas `GET /citas` y `POST /citas/:id/cancelar`, consumiendo directamente `consultarCitasAgente` y `cancelarCitaAgente` desde el pipeline funcional.
+  2. **Preservación Estricta de Restricciones**:
+     - Se aseguró la no modificación de los módulos de dominio en `src/core/`, el orquestador `src/pipeline.ts`, el cliente de red `src/io/llm.ts`, y las vistas preexistentes del formulario de solicitud (`renderFormularioSolicitud` y `renderResultado`).
+  3. **Comprobación Estática y Compilación**:
+     - Se ejecutó `npx tsc --noEmit` confirmando 0 errores de tipado en todo el proyecto.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [src/pipeline.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/pipeline.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Reutilización Funcional sin Efectos Colaterales**: Cómo las funciones orquestadoras `consultarCitasAgente` y `cancelarCitaAgente`, diseñadas originalmente para la consola, se integran sin fricción ni adaptaciones en una interfaz web HTTP.
+    - **Patrón PRG (Post-Redirect-Get)**: Garantiza que tras cancelar una cita mediante POST se redirija al usuario con GET, protegiendo contra reenvíos accidentales de formulario.
+
+---
+
+### Entrada #027 — Implementación de la Vista y Flujo Web para Modificar Citas en ORBIA
+- **Timestamp**: `2026-10-06T21:00:20-06:00`
+- **Indicación (Prompt)**:
+  > "Vamos a agregar la acción de 'Modificar cita' a la vista de 'Mis Citas' de ORBIA, reutilizando modificarCitaAgente del pipeline existente sin modificarlo. Haz lo siguiente:
+  >
+  > En src/views/render.ts, actualiza renderListaCitas para que cada cita tenga, además del botón 'Cancelar', un botón o enlace 'Modificar' que lleve a una nueva ruta GET /citas/:id/modificar.
+  > Agrega una función pura renderFormularioModificar(cita: Cita) que muestre un formulario con los mismos campos que el de agendar (servicio, fecha preferida, hora preferida), precargado con los datos actuales de esa cita, y que haga POST a /citas/:id/modificar.
+  > En src/io/server.ts, agrega:
+  > GET /citas/:id/modificar: busca la cita por id en el estado en memoria y muestra renderFormularioModificar.
+  > POST /citas/:id/modificar: arma una SolicitudUsuario con los datos del formulario, llama a modificarCitaAgente, actualiza el estado en memoria, y redirige a /citas?usuario=<usuario de la cita> mostrando el resultado.
+  >
+  > No modifiques core/, pipeline.ts, llm.ts, ni las funciones de render que ya existen."
+- **Cómo se atendió la petición**:
+  1. **Actualización de Vistas Puras en `src/views/render.ts`**:
+     - En `renderListaCitas`: se añadió el enlace de acción `<a href="/citas/${c.id}/modificar" class="btn-modificar">Modificar</a>` junto al formulario de cancelación para cada cita activa.
+     - Se creó la función pura `renderFormularioModificar(cita: Cita)`: genera el formulario HTML dirigido a `POST /citas/${cita.id}/modificar`, precargando los campos `servicio`, `fechaPreferida` y `horaPreferida` con los valores actuales de la cita (`cita.servicioId`, `cita.fecha`, `cita.hora`) y manteniendo el usuario asociado mediante un campo oculto.
+     - Se mantuvieron inalteradas las funciones existentes `renderFormularioSolicitud`, `renderResultado`, `renderBusquedaCitas` y `renderPagina`.
+  2. **Implementación de Rutas en `src/io/server.ts`**:
+     - `GET /citas/:id/modificar`: Localiza la cita por su identificador en la colección en memoria `citas`. Si existe, renderiza `renderPagina(renderFormularioModificar(cita))`; si no existe, devuelve una respuesta 404 semántica y legible.
+     - `POST /citas/:id/modificar`: Construye un objeto `SolicitudUsuario` a partir de los datos recibidos en `req.body`, invoca la función orquestadora `modificarCitaAgente` desde `src/pipeline.ts` pasándole los catálogos mock, reasigna el estado inmutable (`citas = citasActualizadas`) y redirige al listado filtrado por el usuario (`/citas?usuario=<usuario>`) bajo el patrón PRG.
+  3. **Estilos Visuales en `public/estilos.css`**:
+     - Se incorporó la clase `.btn-modificar` con tono índigo/azul para contrastar con `.btn-cancelar` (tono rojizo) y se ajustó el contenedor `.cita-acciones` con `display: flex` y separación (`gap: 10px`).
+  4. **Preservación Arquitectónica**:
+     - No se modificaron `src/core/`, `src/pipeline.ts`, `src/io/llm.ts`, ni las funciones de render previas.
+  5. **Verificación y Pruebas**:
+     - Compilación estática con `npx tsc` confirmada exitosamente con 0 errores.
+     - Prueba unitaria de renderizado con scripts automatizados validando la presencia de atributos `action`, `value` precargados y enlaces de navegación.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [public/estilos.css](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/public/estilos.css)
+    - [src/pipeline.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/pipeline.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Formularios de Edición con Funciones Puras**: Generación declarativa de formularios precargados a partir de estructuras de datos inmutables sin mezclar estado del servidor ni acoplamiento a frameworks de plantillas.
+    - **Reutilización de Orquestadores Funcionales**: La función `modificarCitaAgente`, diseñada originalmente para pruebas en consola o CLI, procesa la modificación analítica reutilizando `parsearSolicitud`, `filtrarDisponibilidad` y `modificarCita` de manera completamente transparente al contexto web.
+
+
+
+
+
 
 
 

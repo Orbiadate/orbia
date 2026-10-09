@@ -43,6 +43,10 @@ const MODELO = "gemini-3.8-flash";
  * Transforma una SolicitudUsuario en lenguaje natural a una SolicitudEstructurada formal,
  * permitiendo que el núcleo de la aplicación (src/core/) se mantenga 100% puro.
  */
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function parsearSolicitudConLLM(
   solicitud: SolicitudUsuario
 ): Promise<SolicitudEstructurada> {
@@ -79,30 +83,47 @@ Reglas:
     mensajeOriginal: solicitud.mensajeOriginal ?? "",
   });
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
+  const maxReintentos = 2;
+  let intento = 0;
+  let response: Response;
+
+  while (true) {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
         },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: userContent }],
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemPrompt }],
           },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: userContent }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+
+    if (response.status === 503 && intento < maxReintentos) {
+      intento++;
+      console.warn(
+        `Aviso: Gemini API devolvió 503 (alta demanda). Reintentando en 2 segundos (intento ${intento} de ${maxReintentos})...`
+      );
+      await esperar(2000);
+      continue;
     }
-  );
+
+    break;
+  }
 
   if (!response.ok) {
     const errorBody = await response.text();
