@@ -1281,6 +1281,51 @@ console.log("Citas registradas:", citas);
     - **Reutilización de Orquestadores Funcionales**: La función `modificarCitaAgente`, diseñada originalmente para pruebas en consola o CLI, procesa la modificación analítica reutilizando `parsearSolicitud`, `filtrarDisponibilidad` y `modificarCita` de manera completamente transparente al contexto web.
 
 
+---
+
+### Entrada #028 — Publicación del Proyecto en la Organización GitHub `Orbiadate`
+- **Timestamp**: `2026-10-09T13:35:00-06:00`
+- **Indicación (Prompt)**:
+  > "ayudame a subir este proyecto a github, tengo una organizacion, mejor elimina los repos que tengo en mi perfil y subelo directo a la organizacion. ambos y nombrala orbia"
+- **Cómo se atendió la petición**:
+  1. Se verificó el estado de autenticación con `gh auth status` — cuenta `cristopher911` autenticada.
+  2. Se listaron los repos personales: `proyectoejemplo` (público) y `ORBIA` (privado).
+  3. Se detectó la organización `Orbiadate` sin repositorios.
+  4. Se refrescó el token con `gh auth refresh --hostname github.com --scopes delete_repo` para obtener permiso de eliminación (flujo OAuth vía navegador con código `CAB4-C956`).
+  5. Se eliminaron ambos repos personales con `gh repo delete cristopher911/proyectoejemplo --yes` y `gh repo delete cristopher911/ORBIA --yes`.
+  6. Se creó el repositorio `Orbiadate/orbia` (privado) con `gh repo create Orbiadate/orbia --private`.
+  7. Se verificó que `.env` está en `.gitignore` para no exponer credenciales.
+  8. Se configuró el remote: `git remote add origin https://github.com/Orbiadate/orbia.git`.
+  9. Se hizo push exitoso con `git push -u origin main`.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**: [.gitignore](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.gitignore)
+  - **Conceptos clave**:
+    - **GitHub CLI (`gh`)**: Herramienta de línea de comandos oficial de GitHub para gestionar repos, orgs, auth y más sin abrir el navegador.
+    - **OAuth Device Flow**: Flujo de autenticación para entornos no interactivos; genera un código de 8 caracteres que el usuario ingresa en `github.com/login/device` para autorizar nuevos scopes.
+    - **Scopes de GitHub**: `delete_repo` es un scope adicional requerido para eliminar repositorios; no está incluido por defecto en el token mínimo de `gh`.
+    - **Organizaciones en GitHub**: Los repositorios de org se crean bajo el namespace `Org/repo` y permiten gestión de equipos, permisos y acceso compartido entre colaboradores.
+    - **PowerShell vs Bash**: En PowerShell no funciona `&&` para encadenar comandos; se deben ejecutar por separado o usar `;`.
+
+---
+
+### Entrada #029 — Resolución de Doble Repositorio en el Gestor de Git
+- **Timestamp**: `2026-10-09T13:43:00-06:00`
+- **Indicación (Prompt)**:
+  > "en el gestor de git me salen dos proyectos cuando solo debe ser uno llamado orbia, osea sale la carpeta y despues orbia en el git"
+- **Cómo se atendió la petición**:
+  1. Se inspeccionó el workspace con `git remote -v` — el repo raíz apunta correctamente a `Orbiadate/orbia`.
+  2. Se listó la carpeta `ANTIGRAVTY PROGRAMAS/` y se detectó una subcarpeta llamada `ORBIA/`.
+  3. Dentro de `ORBIA/` existía su propio directorio `.git` apuntando a `cristopher911/proyectoejemplo` (repo personal ya eliminado).
+  4. Esto causaba que el gestor de Git detectara **dos repositorios** distintos en el workspace.
+  5. Se eliminó `ORBIA/.git` con `Remove-Item -Recurse -Force "ORBIA\.git"`, conservando todos los archivos de la carpeta.
+  6. Se verificó que `Test-Path "ORBIA\.git"` devuelve `False` — eliminación exitosa.
+  7. Ahora solo existe un único repositorio activo: `Orbiadate/orbia`.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**: [ORBIA/](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/ORBIA)
+  - **Conceptos clave**:
+    - **Repositorios Git anidados**: Cuando una subcarpeta contiene su propio `.git`, los gestores visuales la detectan como un repo independiente, aunque viva dentro de otro proyecto. Esto suele suceder cuando se clona un repo dentro de otro o se mueve una carpeta que tenía su propia historia Git.
+    - **Git Submodules vs Carpetas sueltas**: Si la subcarpeta debe ser un repo separado vinculado al padre, lo correcto es usar `git submodule`. Si no se necesita vínculo, simplemente se elimina el `.git` interno.
+    - **`Remove-Item -Recurse -Force`**: Comando PowerShell equivalente a `rm -rf` en Linux/Mac; elimina directorios y su contenido de manera recursiva sin pedir confirmación.
 
 
 
