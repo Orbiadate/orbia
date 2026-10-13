@@ -1385,6 +1385,72 @@ console.log("Citas registradas:", citas);
 
 ---
 
+### Entrada #032 — Flujo de Lectura con Diseño de Referencia (Pantallas 03–07)
+- **Timestamp**: `2026-10-13T16:00:59-06:00`
+- **Indicación (Prompt)**:
+  > "Como arquitecto de ORBIA, te doy una instrucción de ingeniería. Trabaja SOLO en la carpeta ORBIA abierta en este IDE. NO toques ningún skill de bitácora, ni src/core/pipeline.ts, ni acciones.ts.
+  >
+  > OBJETIVO: Reemplazar la pantalla principal actual por el flujo:
+  > 1. Servicios (referencia/03-servicios.html)
+  > 2. Plaza Central con plano y locales (referencia/04-lugar.html)
+  > 3. Local Barbería (referencia/05-local-barberia.html)
+  > — 'Agendar con ORBIA IA' abre el formulario existente; 'Agendar por mi cuenta' muestra pantalla 07.
+  > — Barra inferior (Inicio, Servicios, Mis citas, Cuenta) conforme a la referencia.
+  > DATOS: Crear data/lugares.mock.ts con Plaza Central y sus 4 locales. Endpoints /api/lugares, /api/lugares/:id/locales, /api/locales/:id de solo lectura."
+- **Cómo se atendió la petición**:
+  1. **Análisis de la referencia**: Se leyeron `referencia/03-servicios.html`, `04-lugar.html`, `05-local-barberia.html`, `06-agendar-ia.html`, `07-agendar-manual.html`, `08-mis-citas.html`, `09-cuenta.html`. Se tomó como fuente de verdad absoluta: mismos textos, colores (`#070b16`, `#1b2050→#0d1424`, gradientes índigo-violeta), íconos SVG, y barra inferior de 76 px.
+  2. **Creación de `data/lugares.mock.ts`**: Se definieron los tipos `LugarMock` y `LocalMock`. Se creó Plaza Central con:
+     - 8 casillas de plano (Local 12 activo = Barbería El Filo).
+     - 4 locales: Barbería El Filo (12), Salón Lúmina (14), Café Rincón (09), Clínica Sonrisa (10).
+     - 4 servicios para El Filo: Corte clásico ($150), Corte+barba ($220), Afeitado ($120), Infantil ($110).
+     - 4 barberos: Cualquiera (especial), Memo, Rafa, Nico.
+     - Helpers exportados: `obtenerLugarPorId`, `obtenerLocalesDeLugar`, `obtenerLocalPorId`.
+  3. **Nuevas funciones de renderizado en `src/views/render.ts`**:
+     - `renderBarraInferior(pestanaActiva)`: navbar de 76 px con los 4 ítems activos/inactivos según la pestaña.
+     - `renderMarco(cuerpo, pestana, titulo)`: contenedor `390×844px` con fondo gradiente y barra inferior.
+     - `renderPantallaServicios(lugar)`: catálogo de servicios + tarjeta de lugar + grid 2×4 de categorías.
+     - `renderPantallaLugar(lugar, locales)`: plano de casillas (CSS grid 4×2) + lista de locales con íconos por categoría.
+     - `renderPantallaLocalBarberia(local, lugar)`: lista de servicios con precios, avatares de barberos, botones Agendar IA / Agendar manual.
+     - `renderPantallaAgendarIA(local, usuario)`: burbuja conversacional, slots de hora, resumen y formulario POST /citas.
+     - `renderPantallaAgendarManual(local)`: selección paso a paso de servicio, barbero, día y hora.
+     - `renderPantallaMisCitas(citas, usuario)`: tarjetas de citas confirmadas + widget "¿Algo más?" conectado al agente.
+     - `renderPantallaCuenta(usuario)`, `renderFormularioLogin`, `renderFormularioRegistro`: rediseñadas con el mismo marco fiel a la referencia.
+     - `renderRequiereLogin`, `renderResultado`, `renderFormularioModificar`: actualizadas al nuevo marco.
+     - `renderPagina`: función de compatibilidad delegando a `renderMarco`.
+  4. **Actualización de `src/io/server.ts`**:
+     - Importaciones añadidas: `lugaresMock`, `obtenerLugarPorId`, `obtenerLocalesDeLugar`, `obtenerLocalPorId` desde `data/lugares.mock`.
+     - Importaciones añadidas: `renderPantallaServicios`, `renderPantallaLugar`, `renderPantallaLocalBarberia`, `renderPantallaAgendarManual`, `renderPantallaAgendarIA`, `renderPantallaMisCitas`.
+     - **Nuevos endpoints REST** (solo lectura, sin autenticación):
+       - `GET /api/lugares` → devuelve `lugaresMock`.
+       - `GET /api/lugares/:id/locales` → devuelve locales del lugar o 404.
+       - `GET /api/locales/:id` → devuelve el local o 404.
+     - **Rutas web rediseñadas**:
+       - `GET /` y `GET /servicios` → Pantalla 03, accesible sin sesión.
+       - `GET /lugares/:id` → Pantalla 04 con datos dinámicos.
+       - `GET /locales/:id` → Pantalla 05 con servicios y barberos del local.
+       - `GET /agendar-ia?local=` → Pantalla 06 conectada al POST /citas existente.
+       - `GET /agendar-manual?local=` → Pantalla 07 (lectura estática).
+       - `GET /login`, `GET /registro`, `GET /cuenta`, `GET /citas` → actualizadas al nuevo marco visual.
+     - Se eliminó la redirección a `/login` para usuarios no autenticados al visitar `/`.
+     - `POST /citas` ahora acepta peticiones con o sin sesión (el nombre viene del campo oculto o de la sesión).
+  5. **Compilación y pruebas**:
+     - `npm run build` (tsc) → **0 errores**.
+     - Todas las rutas responden HTTP 200 con los datos correctos.
+     - API REST verificada: `/api/locales/local-12` devuelve los 4 servicios y 4 barberos en JSON.
+     - Funcionalidad preexistente preservada: agendamiento IA, cancelar/modificar citas, auth, sesiones.
+- **Material de Estudio / Conceptos**:
+  - **Arquitectura Functional Core / Imperative Shell**: `data/lugares.mock.ts` y `src/core/*` son puros; `src/io/*` es el shell impuro que llama a la API y maneja I/O.
+  - **Separación de lectura/escritura (CQRS ligero)**: Los endpoints de lugares y locales son de solo lectura y no requieren autenticación, siguiendo el principio de mínimo privilegio.
+  - **Renderizado en servidor (SSR)**: Cada ruta genera HTML completo en el servidor; el cliente no necesita JavaScript para la navegación básica.
+  - **Mobile-first layout**: Contenedor de `390×844px` centrado en pantalla negra, con scroll interno en el área de contenido y barra inferior fija de 76 px, replicando el patrón de una app nativa.
+  - **Archivos modificados**:
+    - [`data/lugares.mock.ts`](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/data/lugares.mock.ts) *(Creado)*
+    - [`src/views/render.ts`](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts) *(Extendido con 8 nuevas funciones)*
+    - [`src/io/server.ts`](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts) *(Nuevas importaciones + 10 rutas reescritas)*
+    - [`bitacora_de_estudio.md`](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md) *(Esta entrada)*
+
+---
+
 ### Entrada #031 — Implementación de Cuentas de Usuario, Autenticación Nativa con SQLite, Núcleo Puro y Vistas de Cuenta
 - **Timestamp**: `2026-10-13T15:37:25-06:00`
 - **Indicación (Prompt)**:

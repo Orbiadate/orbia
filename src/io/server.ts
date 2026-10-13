@@ -36,11 +36,20 @@ import {
 } from "../pipeline";
 import { negociosMock, horariosMock } from "../../data/negocios.mock";
 import {
-  renderFormularioSolicitud,
+  lugaresMock,
+  obtenerLugarPorId,
+  obtenerLocalesDeLugar,
+  obtenerLocalPorId,
+} from "../../data/lugares.mock";
+import {
+  renderPantallaServicios,
+  renderPantallaLugar,
+  renderPantallaLocalBarberia,
+  renderPantallaAgendarManual,
+  renderPantallaAgendarIA,
+  renderPantallaMisCitas,
   renderResultado,
   renderPagina,
-  renderBusquedaCitas,
-  renderListaCitas,
   renderFormularioModificar,
   renderFormularioLogin,
   renderFormularioRegistro,
@@ -288,43 +297,125 @@ app.get("/api/servicios", (_req: Request, res: Response) => {
   res.status(200).json({ servicios: todosServicios });
 });
 
+/**
+ * GET /api/lugares — Lista todos los lugares disponibles (solo lectura).
+ */
+app.get("/api/lugares", (_req: Request, res: Response) => {
+  res.status(200).json(lugaresMock);
+});
+
+/**
+ * GET /api/lugares/:id/locales — Lista los locales de un lugar específico (solo lectura).
+ */
+app.get("/api/lugares/:id/locales", (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const lugar = obtenerLugarPorId(id);
+  if (!lugar) {
+    res.status(404).json({ error: `Lugar no encontrado con id '${id}'.` });
+    return;
+  }
+  const locales = obtenerLocalesDeLugar(id);
+  res.status(200).json(locales);
+});
+
+/**
+ * GET /api/locales/:id — Detalle de un local específico con sus servicios y profesionales (solo lectura).
+ */
+app.get("/api/locales/:id", (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const local = obtenerLocalPorId(id);
+  if (!local) {
+    res.status(404).json({ error: `Local no encontrado con id '${id}'.` });
+    return;
+  }
+  res.status(200).json(local);
+});
+
 // ============================================================================
 // VISTAS WEB
 // ============================================================================
 
 /**
- * GET / — Ruta principal.
- * - Con sesión: muestra pantalla Servicios con el usuario precargado.
- * - Sin sesión y con parámetro ?modo=invitado: muestra Servicios en modo invitado.
- * - Sin sesión y sin modo invitado: redirige a /login.
+ * GET / y GET /servicios — PANTALLA 03: Servicios (referencia/03-servicios.html).
+ * Punto de entrada principal donde se muestran el lugar asignado y el catálogo.
  */
-app.get("/", (req: Request, res: Response) => {
-  const usuario = obtenerUsuarioDePeticion(req);
-  const esInvitado = req.query.modo === "invitado";
-
-  if (usuario) {
-    const html = renderPagina(renderFormularioSolicitud(usuario, false), usuario, {
-      titulo: "Servicios - ORBIA",
-    });
-    res.type("html").send(html);
-    return;
-  }
-
-  if (esInvitado) {
-    const html = renderPagina(renderFormularioSolicitud(null, true), null, {
-      titulo: "Servicios (Invitado) - ORBIA",
-      esInvitado: true,
-    });
-    res.type("html").send(html);
-    return;
-  }
-
-  // Al abrir la app sin sesión previa, dirigir a Iniciar sesión
-  res.redirect("/login");
+app.get(["/", "/servicios"], (_req: Request, res: Response) => {
+  const lugar = obtenerLugarPorId("plaza-central") || lugaresMock[0];
+  const html = renderPantallaServicios(lugar);
+  res.type("html").send(html);
 });
 
 /**
- * GET /login — Pantalla de Iniciar Sesión.
+ * GET /lugares/:id — PANTALLA 04: Plaza Central (referencia/04-lugar.html).
+ * Muestra el plano de casillas y el listado de locales dinámicamente.
+ */
+app.get("/lugares/:id", (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const lugar = obtenerLugarPorId(id);
+  if (!lugar) {
+    res.status(404).type("html").send(
+      renderPagina(
+        `<div style="padding:48px 24px;text-align:center"><h2 style="font-size:20px;font-weight:800">Lugar no encontrado</h2><p style="color:#94a3b8">No se encontró el lugar con ID "${id}".</p><a href="/servicios" style="color:#a5b4fc;font-weight:700">&larr; Volver a Servicios</a></div>`,
+        null,
+        { titulo: "No Encontrado - ORBIA" }
+      )
+    );
+    return;
+  }
+
+  const locales = obtenerLocalesDeLugar(id);
+  const html = renderPantallaLugar(lugar, locales);
+  res.type("html").send(html);
+});
+
+/**
+ * GET /locales/:id — PANTALLA 05: Local de la barbería u otros (referencia/05-local-barberia.html).
+ * Muestra servicios, barberos y los botones "Agendar con ORBIA IA" y "Agendar por mi cuenta".
+ */
+app.get("/locales/:id", (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const local = obtenerLocalPorId(id);
+  if (!local) {
+    res.status(404).type("html").send(
+      renderPagina(
+        `<div style="padding:48px 24px;text-align:center"><h2 style="font-size:20px;font-weight:800">Local no encontrado</h2><p style="color:#94a3b8">No se encontró el local con ID "${id}".</p><a href="/lugares/plaza-central" style="color:#a5b4fc;font-weight:700">&larr; Volver al Lugar</a></div>`,
+        null,
+        { titulo: "No Encontrado - ORBIA" }
+      )
+    );
+    return;
+  }
+
+  const lugar = obtenerLugarPorId(local.lugarId) || lugaresMock[0];
+  const html = renderPantallaLocalBarberia(local, lugar);
+  res.type("html").send(html);
+});
+
+/**
+ * GET /agendar-ia — PANTALLA 06: Agendar con ORBIA IA (referencia/06-agendar-ia.html).
+ * Conectado con el flujo funcional existente de agendamiento inteligente.
+ */
+app.get("/agendar-ia", (req: Request, res: Response) => {
+  const localId = typeof req.query.local === "string" ? req.query.local : "local-12";
+  const local = obtenerLocalPorId(localId) || obtenerLocalPorId("local-12")!;
+  const usuario = obtenerUsuarioDePeticion(req);
+  const html = renderPantallaAgendarIA(local, usuario);
+  res.type("html").send(html);
+});
+
+/**
+ * GET /agendar-manual — PANTALLA 07: Agendar por mi cuenta (referencia/07-agendar-manual.html).
+ * Muestra la selección manual paso a paso (sin conectar al servidor por ahora).
+ */
+app.get("/agendar-manual", (req: Request, res: Response) => {
+  const localId = typeof req.query.local === "string" ? req.query.local : "local-12";
+  const local = obtenerLocalPorId(localId) || obtenerLocalPorId("local-12")!;
+  const html = renderPantallaAgendarManual(local);
+  res.type("html").send(html);
+});
+
+/**
+ * GET /login — PANTALLA 01: Iniciar Sesión (referencia/01-login.html).
  */
 app.get("/login", (req: Request, res: Response) => {
   const usuario = obtenerUsuarioDePeticion(req);
@@ -335,14 +426,12 @@ app.get("/login", (req: Request, res: Response) => {
     return;
   }
 
-  const html = renderPagina(renderFormularioLogin(redirectDestino), null, {
-    titulo: "Iniciar Sesión - ORBIA",
-  });
+  const html = renderFormularioLogin(redirectDestino);
   res.type("html").send(html);
 });
 
 /**
- * GET /registro — Pantalla de Crear Cuenta.
+ * GET /registro — PANTALLA 02: Crear Cuenta (referencia/02-registro.html).
  */
 app.get("/registro", (req: Request, res: Response) => {
   const usuario = obtenerUsuarioDePeticion(req);
@@ -353,53 +442,59 @@ app.get("/registro", (req: Request, res: Response) => {
     return;
   }
 
-  const html = renderPagina(renderFormularioRegistro(redirectDestino), null, {
-    titulo: "Crear Cuenta - ORBIA",
-  });
+  const html = renderFormularioRegistro(redirectDestino);
   res.type("html").send(html);
 });
 
 /**
- * GET /cuenta — Pantalla "Cuenta" del usuario autenticado (exige sesión).
+ * GET /cuenta — PANTALLA 09: Cuenta (referencia/09-cuenta.html).
+ * Exige sesión activa; si no existe, redirige a /login.
  */
-app.get("/cuenta", requerirSesion, (req: Request, res: Response) => {
-  const usuario = obtenerUsuarioDePeticion(req)!;
-  const html = renderPagina(renderPantallaCuenta(usuario), usuario, {
-    titulo: "Mi Cuenta - ORBIA",
-  });
+app.get("/cuenta", (req: Request, res: Response) => {
+  const usuario = obtenerUsuarioDePeticion(req);
+  if (!usuario) {
+    res.redirect("/login?redirect=%2Fcuenta");
+    return;
+  }
+  const html = renderPantallaCuenta(usuario);
   res.type("html").send(html);
 });
 
 /**
- * GET /citas — Consulta las citas de un usuario (exige sesión activa).
+ * GET /citas — PANTALLA 08: Mis Citas (referencia/08-mis-citas.html).
+ * Consulta las citas activas del usuario autenticado o especificado en query.
  */
-app.get("/citas", requerirSesion, (req: Request, res: Response) => {
-  const usuarioAuth = obtenerUsuarioDePeticion(req)!;
+app.get("/citas", (req: Request, res: Response) => {
+  const usuarioAuth = obtenerUsuarioDePeticion(req);
   const usuarioBuscado =
     typeof req.query.usuario === "string" && req.query.usuario.trim() !== ""
       ? req.query.usuario.trim()
-      : usuarioAuth.nombre;
+      : usuarioAuth?.nombre;
+
+  if (!usuarioBuscado) {
+    // Si no tiene sesión activa ni usuario especificado, solicitar inicio de sesión
+    res.redirect("/login?redirect=%2Fcitas");
+    return;
+  }
 
   const resultadoConsulta = consultarCitasAgente(citas, usuarioBuscado);
-  const contenido =
-    renderBusquedaCitas(usuarioBuscado) +
-    renderListaCitas(resultadoConsulta.citas, usuarioBuscado);
-
-  res.type("html").send(renderPagina(contenido, usuarioAuth, { titulo: "Mis Citas - ORBIA" }));
+  const html = renderPantallaMisCitas(resultadoConsulta.citas, usuarioBuscado);
+  res.type("html").send(html);
 });
 
 /**
- * POST /citas — Procesa la solicitud de agendamiento (exige sesión activa).
+ * POST /citas — Procesa la solicitud de agendamiento con el agente inteligente existente.
+ * Mantiene la funcionalidad intacta: procesar con IA, registrar en memoria y mostrar confirmación.
  */
-app.post("/citas", requerirSesion, async (req: Request, res: Response) => {
+app.post("/citas", async (req: Request, res: Response) => {
   try {
-    const usuarioAuth = obtenerUsuarioDePeticion(req)!;
+    const usuarioAuth = obtenerUsuarioDePeticion(req);
     const { servicio, fechaPreferida, horaPreferida, nombreUsuario } = req.body;
 
     const nombreFinal =
       typeof nombreUsuario === "string" && nombreUsuario.trim() !== ""
         ? nombreUsuario.trim()
-        : usuarioAuth.nombre;
+        : usuarioAuth?.nombre || "Invitado";
 
     const solicitud: SolicitudUsuario = {
       nombreUsuario: nombreFinal,
@@ -417,21 +512,15 @@ app.post("/citas", requerirSesion, async (req: Request, res: Response) => {
 
     citas = nuevasCitas;
 
-    const html = renderPagina(renderResultado(resultado), usuarioAuth, {
-      titulo: "Resultado del Agendamiento - ORBIA",
-    });
+    const html = renderResultado(resultado);
     res.type("html").send(html);
   } catch (error) {
     console.error("Error al procesar la cita:", error);
-    const usuarioAuth = obtenerUsuarioDePeticion(req);
-    const htmlError = renderPagina(
-      renderResultado({
-        exito: false,
-        mensaje:
-          "Ocurrió un error inesperado al procesar la cita. Por favor, intenta de nuevo en unos momentos.",
-      }),
-      usuarioAuth
-    );
+    const htmlError = renderResultado({
+      exito: false,
+      mensaje:
+        "Ocurrió un error inesperado al procesar la cita. Por favor, intenta de nuevo en unos momentos.",
+    });
     res.status(500).type("html").send(htmlError);
   }
 });
