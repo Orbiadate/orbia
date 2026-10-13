@@ -13,6 +13,19 @@ function detectarFranjaHora(texto: string): SolicitudEstructurada["franjaHora"] 
   if (PALABRAS_TARDE.some((p) => t.includes(p))) return "tarde";
   if (PALABRAS_NOCHE.some((p) => t.includes(p))) return "noche";
   if (PALABRAS_MANANA.some((p) => t.includes(p))) return "manana";
+
+  // Detección determinista por expresión regular para horas (ej: 14:00, 16:30, 9am, 4pm, 10:00)
+  const matchHora = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (matchHora) {
+    let hora = parseInt(matchHora[1], 10);
+    const ampm = matchHora[3]?.toLowerCase();
+    if (ampm === "pm" && hora < 12) hora += 12;
+    if (ampm === "am" && hora === 12) hora = 0;
+    if (hora >= 6 && hora < 12) return "manana";
+    if (hora >= 12 && hora < 19) return "tarde";
+    if (hora >= 19 || hora < 6) return "noche";
+  }
+
   return "sin_especificar";
 }
 
@@ -20,24 +33,58 @@ function detectarFranjaFecha(texto: string): SolicitudEstructurada["franjaFecha"
   const t = texto.toLowerCase();
   if (t.includes("hoy")) return "hoy";
   if (t.includes("mañana") || t.includes("manana")) return "manana";
-  if (t.includes("viernes") || t.includes("semana")) return "esta_semana";
+  if (
+    t.includes("viernes") ||
+    t.includes("sabado") ||
+    t.includes("domingo") ||
+    t.includes("lunes") ||
+    t.includes("martes") ||
+    t.includes("miercoles") ||
+    t.includes("jueves") ||
+    t.includes("semana") ||
+    /\d{4}-\d{2}-\d{2}/.test(t) ||
+    /\d{1,2}\/\d{1,2}/.test(t)
+  ) {
+    return "esta_semana";
+  }
   return "sin_especificar";
 }
 
 /**
- * Convierte una SolicitudUsuario (texto libre) en una SolicitudEstructurada.
- * Es una función pura: misma entrada -> misma salida, sin efectos secundarios.
+ * Convierte una SolicitudUsuario en una SolicitudEstructurada mediante un parser local determinista.
+ * Función 100% pura: misma entrada -> misma salida, sin I/O ni efectos secundarios.
+ * Se utiliza como Plan B de respaldo cuando los servicios LLM externos no están disponibles.
  */
-export function parsearSolicitud(solicitud: SolicitudUsuario): SolicitudEstructurada {
-  const textoCompleto = `${solicitud.fechaPreferida ?? ""} ${solicitud.horaPreferida ?? ""}`;
+export function parsearSolicitudLocal(
+  solicitud: SolicitudUsuario,
+  marcarModoLocal: boolean = true
+): SolicitudEstructurada {
+  const textoFechaHora = `${solicitud.fechaPreferida ?? ""} ${solicitud.horaPreferida ?? ""}`;
+  const textoCompleto = `${solicitud.mensajeOriginal ?? ""} ${textoFechaHora}`.trim();
+
+  let servicio = solicitud.servicio?.trim().toLowerCase() || "";
+  if (!servicio && solicitud.mensajeOriginal) {
+    const matchServicio = solicitud.mensajeOriginal.match(
+      /(?:para|servicio|de)\s+([a-záéíóúñ\s]+?)(?:\s+(?:el|a las|en|hoy|mañana)|\.|$)/i
+    );
+    if (matchServicio && matchServicio[1]) {
+      servicio = matchServicio[1].trim().toLowerCase();
+    }
+  }
 
   return {
-    nombreUsuario: solicitud.nombreUsuario,
+    nombreUsuario: solicitud.nombreUsuario.trim(),
     intencion: "agendar",
-    servicio: solicitud.servicio.toLowerCase().trim(),
-    franjaFecha: detectarFranjaFecha(textoCompleto),
-    franjaHora: detectarFranjaHora(textoCompleto),
+    servicio: servicio || solicitud.servicio.trim().toLowerCase(),
+    franjaFecha: detectarFranjaFecha(textoFechaHora || textoCompleto),
+    franjaHora: detectarFranjaHora(textoFechaHora || textoCompleto),
     fechaPreferida: solicitud.fechaPreferida,
     horaPreferida: solicitud.horaPreferida,
+    ...(marcarModoLocal ? { modoLocal: true } : {}),
   };
 }
+
+/**
+ * Alias de compatibilidad hacia atrás para parsearSolicitud
+ */
+export const parsearSolicitud = parsearSolicitudLocal;

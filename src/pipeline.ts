@@ -8,6 +8,7 @@ export interface ResultadoAgente {
   exito: boolean;
   mensaje: string;
   cita?: Cita;
+  modoLocal?: boolean;
 }
 
 export interface ResultadoConsulta {
@@ -37,6 +38,7 @@ export async function procesarSolicitud(
       resultado: {
         exito: false,
         mensaje: `No encontré disponibilidad para "${solicitud.servicio}" en la franja solicitada.`,
+        modoLocal: estructurada.modoLocal,
       },
       citas: citasActuales,
     };
@@ -44,12 +46,14 @@ export async function procesarSolicitud(
 
   const nuevasCitas = reservarCita(citasActuales, solicitud.nombreUsuario, mejorOpcion);
   const citaCreada = nuevasCitas[nuevasCitas.length - 1];
+  const avisoModo = estructurada.modoLocal ? " (Procesado mediante parser local de respaldo)" : "";
 
   return {
     resultado: {
       exito: true,
-      mensaje: `Cita confirmada para ${solicitud.nombreUsuario} el ${citaCreada.fecha} a las ${citaCreada.hora}.`,
+      mensaje: `Cita confirmada para ${solicitud.nombreUsuario} el ${citaCreada.fecha} a las ${citaCreada.hora}.${avisoModo}`,
       cita: citaCreada,
+      modoLocal: estructurada.modoLocal,
     },
     citas: nuevasCitas,
   };

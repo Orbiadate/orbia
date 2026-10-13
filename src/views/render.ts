@@ -14,7 +14,7 @@ export function renderFormularioSolicitud(): string {
     </header>
 
     <main class="card">
-      <form action="/citas" method="POST" class="formulario">
+      <form action="/citas" method="POST" class="formulario" id="formAgendar">
         <div class="campo">
           <label for="nombreUsuario">Nombre del Usuario</label>
           <input
@@ -61,11 +61,44 @@ export function renderFormularioSolicitud(): string {
           </div>
         </div>
 
-        <button type="submit" class="btn-principal">
-          <span>Agendar Cita con IA</span>
-          <span class="btn-flecha">&rarr;</span>
+        <button type="submit" class="btn-principal" id="btnAgendar">
+          <span id="btnAgendarTexto">Agendar Cita con IA</span>
+          <span class="btn-flecha" id="btnAgendarIcono">&rarr;</span>
         </button>
       </form>
+
+      <script>
+        (function() {
+          const form = document.getElementById('formAgendar');
+          const btn = document.getElementById('btnAgendar');
+          const texto = document.getElementById('btnAgendarTexto');
+          const icono = document.getElementById('btnAgendarIcono');
+          let enCurso = false;
+          let ultimoEnvio = 0;
+          const DEBOUNCE_MS = 800;
+
+          if (form && btn) {
+            form.addEventListener('submit', function(e) {
+              const ahora = Date.now();
+              // Evitar envíos múltiples o clics rápidos dentro del debounce
+              if (enCurso || (ahora - ultimoEnvio < DEBOUNCE_MS)) {
+                e.preventDefault();
+                return false;
+              }
+
+              ultimoEnvio = ahora;
+              enCurso = true;
+
+              // Deshabilitar botón y mostrar retroalimentación de proceso
+              btn.disabled = true;
+              btn.style.opacity = '0.75';
+              btn.style.cursor = 'not-allowed';
+              if (texto) texto.textContent = 'Procesando tu solicitud...';
+              if (icono) icono.textContent = '⏳';
+            });
+          }
+        })();
+      </script>
     </main>
   `;
 }
@@ -123,6 +156,18 @@ export function renderResultado(resultado: ResultadoAgente): string {
     `;
   }
 
+  let modoLocalHtml = "";
+  if (resultado.modoLocal) {
+    modoLocalHtml = `
+      <div style="margin: 16px 0; padding: 12px 16px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; font-size: 0.875rem; color: #fbbf24; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.2rem;">⚡</span>
+        <div>
+          <strong>Modo Local Activo (Plan B):</strong> La solicitud fue procesada por el parser determinista puro debido a saturación o indisponibilidad en los servicios externos de IA.
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <header class="header">
       <div class="logo-badge">ORBIA AI</div>
@@ -138,6 +183,7 @@ export function renderResultado(resultado: ResultadoAgente): string {
         </div>
       </div>
 
+      ${modoLocalHtml}
       ${detalleCitaHtml}
 
       <div class="acciones">

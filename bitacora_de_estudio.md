@@ -1327,6 +1327,63 @@ console.log("Citas registradas:", citas);
     - **Git Submodules vs Carpetas sueltas**: Si la subcarpeta debe ser un repo separado vinculado al padre, lo correcto es usar `git submodule`. Si no se necesita vínculo, simplemente se elimina el `.git` interno.
     - **`Remove-Item -Recurse -Force`**: Comando PowerShell equivalente a `rm -rf` en Linux/Mac; elimina directorios y su contenido de manera recursiva sin pedir confirmación.
 
+---
+
+### Entrada #030 — Resiliencia en LLM: Reintentos con Backoff Exponencial, Modelos en Cascada, Plan B Determinista y Control de UI
+- **Timestamp**: `2026-10-13T15:11:45-06:00`
+- **Indicación (Prompt)**:
+  > "Como arquitecto de ORBIA, te doy una instrucción de ingeniería. Trabaja SOLO en la carpeta ORBIA abierta en este IDE (no crees otra copia) y NO modifiques archivos que no menciono, incluido cualquier skill de bitácora.
+  > 
+  > DIAGNÓSTICO CONFIRMADO
+  > Al agendar, parsearSolicitudConLLM (src/io/llm.ts) recibe de Gemini un HTTP 503 'UNAVAILABLE / high demand'. Mi reintento actual (2 intentos de 2 s) no alcanza. El front termina mostrando 'Ocurrió un error inesperado'.
+  > 
+  > CAMBIOS EN src/io/llm.ts (shell impuro; src/core/ debe seguir 100% puro)
+  > 1. Reintentos: sube a 5 intentos con backoff exponencial y jitter (aprox. 2s, 4s, 8s, 16s, 30s máximo), solo para 429, 500, 502, 503 y 504. Si la respuesta trae Retry-After, respétalo. Los demás errores (400, 401, 403, 404) NO se reintentan y fallan de inmediato con mensaje claro.
+  > 2. Modelo de respaldo: define una lista de modelos en orden de preferencia (principal + uno o dos alternativos de Gemini que tenga disponibles mi API key), configurable por variable de entorno. Si el principal agota sus reintentos con 503, pasa al siguiente modelo antes de rendirte.
+  > 3. Plan B sin LLM: si TODOS los modelos fallan, usa un parser determinista local (el que tenía antes de la Fase 3, o una versión simple con expresiones regulares para servicio, fecha y hora) para que la cita se agende igual. Debe ser una función pura en src/core/ y la decisión de usarla debe vivir en el shell. Marca en el resultado que se usó el modo local.
+  > 4. Un solo request a la vez y mínimo 1.5 s entre llamadas consecutivas a la API.
+  > 5. Valida el JSON que devuelve el LLM; si es inválido, trátalo como error controlado (y cae al plan B), sin romper el pipeline.
+  > 6. Logs claros en consola: modelo usado, intento número, código HTTP. Nunca imprimas la API key.
+  > 
+  > CAMBIOS EN EL FRONT
+  > - Deshabilita el botón 'Agendar' mientras hay una petición en curso y agrega un debounce de 800 ms.
+  > - Muestra 'Procesando tu solicitud...' y,"
+- **Cómo se atendió la petición**:
+  1. **Políticas de Reintento y Backoff en `src/io/llm.ts`**:
+     - Se incrementó a 5 el límite de reintentos por modelo ante códigos HTTP transitorios (`429`, `500`, `502`, `503`, `504`).
+     - Se implementó algoritmo de backoff exponencial con jitter aleatorio (`Math.min(30000, 2000 * 2^(intento-1) ± 15%)`).
+     - Se integró soporte para parsear y respetar el encabezado `Retry-After` (en segundos o formato de fecha HTTP), prevaleciendo sobre la demora calculada si es mayor.
+     - Los errores HTTP permanentes (`400`, `401`, `403`, `404`) fallan inmediatamente sin reintentos innecesarios.
+  2. **Modelos en Cascada (Failover)**:
+     - Se implementó `obtenerModelosConfigurados()` con orden de preferencia: modelo principal (configurable por `GEMINI_MODEL` o por defecto `gemini-3.8-flash`) y respaldos (`gemini-2.5-flash`, `gemini-flash-latest`), o una lista personalizada por `GEMINI_MODELS`.
+     - Si un modelo agota sus 5 reintentos con 503 u otro error temporal, el flujo conmuta automáticamente al siguiente modelo de respaldo.
+  3. **Plan B Determinista en `src/core/parse.ts` y Shell**:
+     - Se reforzó `parsearSolicitudLocal` como función pura en `src/core/parse.ts` con expresiones regulares para franjas horarias (ej. `16:30`, `4pm`, `9:00`) y fechas.
+     - Marca `modoLocal: true` en la estructura retornada.
+     - Si todos los modelos de Gemini fallan, o devuelven JSON inválido, el shell `src/io/llm.ts` activa el Plan B sin propagar excepciones que interrumpan el pipeline.
+  4. **Control de Concurrencia y Límite de Tasa**:
+     - Se incorporó un mecanismo mutex secuencial con `ejecutarConControlDeTasa` para garantizar un único request simultáneo a la API de Gemini y un espacio mínimo de 1.500 ms entre llamadas consecutivas.
+  5. **Validación de JSON y Sanitización de Logs**:
+     - Función `validarYExtraerJSON` para parsing seguro y delimitación regex.
+     - Logs explícitos en consola registrando modelo, intento y código HTTP (`[LLM] Enviando solicitud | Modelo: ... | Intento: ... | Código HTTP: ...`), garantizando que la API key nunca se imprima en consola.
+  6. **Mejoras de Experiencia en el Front (`src/views/render.ts`)**:
+     - Se agregó un listener con debounce de 800 ms y bandera de bloqueo en el formulario de agendamiento.
+     - Al enviar, el botón "Agendar Cita con IA" se deshabilita instantáneamente, reduciendo su opacidad y actualizando el texto a `"Procesando tu solicitud..."` con icono de espera.
+     - En la vista de resultados (`renderResultado`), se muestra un banner distintivo cuando la cita fue programada en Modo Local (Plan B).
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/io/llm.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/llm.ts)
+    - [src/core/parse.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/core/parse.ts)
+    - [src/types.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/types.ts)
+    - [src/pipeline.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/pipeline.ts)
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Exponential Backoff with Full Jitter**: Estrategia recomendada por Google Cloud y AWS para evitar el efecto de "manada atronadora" (thundering herd) cuando un servicio devuelve 503 por saturación.
+    - **Graceful Degradation (Plan B)**: Patrón arquitectónico donde un fallo en el componente de IA generativa no bloquea la funcionalidad crítica del negocio (agendar la cita), recurriendo a heurísticas deterministas puras.
+    - **Concurrency Locking (Mutex) & Rate Limiting**: Limitación del paralelismo en el Imperative Shell para cumplir con las cuotas de peticiones por minuto (RPM) de la API externa sin introducir efectos secundarios en el Functional Core.
+
+
 
 
 

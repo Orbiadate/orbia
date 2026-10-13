@@ -65,6 +65,7 @@ export interface SolicitudEstructurada {
   readonly fechaNormalizada?: string;
   readonly horaNormalizada?: string;
   readonly citaIdObjetivo?: string;
+  readonly modoLocal?: boolean;
 }
 
 
