@@ -1383,6 +1383,106 @@ console.log("Citas registradas:", citas);
     - **Graceful Degradation (Plan B)**: Patrón arquitectónico donde un fallo en el componente de IA generativa no bloquea la funcionalidad crítica del negocio (agendar la cita), recurriendo a heurísticas deterministas puras.
     - **Concurrency Locking (Mutex) & Rate Limiting**: Limitación del paralelismo en el Imperative Shell para cumplir con las cuotas de peticiones por minuto (RPM) de la API externa sin introducir efectos secundarios en el Functional Core.
 
+---
+
+### Entrada #031 — Implementación de Cuentas de Usuario, Autenticación Nativa con SQLite, Núcleo Puro y Vistas de Cuenta
+- **Timestamp**: `2026-10-13T15:37:25-06:00`
+- **Indicación (Prompt)**:
+  > "Como arquitecto de ORBIA, te doy una instrucción de ingeniería. Trabaja SOLO en la carpeta ORBIA abierta en este IDE (no crees otra copia) y NO toques ningún skill de bitácora ni archivos que no menciono.
+  > 
+  > OBJETIVO
+  > ORBIA pasa de prototipo a aplicación. Agrega cuentas de usuario: crear cuenta, iniciar sesión, cerrar sesión y pantalla 'Cuenta'. Más adelante las citas quedarán ligadas al usuario.
+  > 
+  > PASO 1 - ALMACÉN (shell impuro, src/io/)
+  > - Revisa mi versión de Node. Si es 22.5 o superior usa node:sqlite (sin dependencias); si no, usa better-sqlite3 y dime que es la única dependencia nueva.
+  > - Base de datos en data/orbia.db, agregada a .gitignore. Avísame si recomiendas guardarla fuera de la carpeta sincronizada por OneDrive.
+  > - Tablas: usuarios (id, nombre, correo único en minúsculas, hash, creadoEn) y sesiones (hash del token, usuarioId, expiraEn).
+  > 
+  > PASO 2 - NÚCLEO PURO (src/core/auth.ts)
+  > - Funciones puras: validarRegistro({nombre, correo, contrasena}) que devuelve la lista de errores (nombre no vacío, correo con formato válido, contraseña de mínimo 8 caracteres), normalizarCorreo, y los tipos Usuario y UsuarioPublico (sin hash).
+  > - Sin efectos secundarios.
+  > 
+  > PASO 3 - SEGURIDAD (shell)
+  > - Contraseñas: hash con crypto.scrypt de Node y sal aleatoria por usuario; compara con timingSafeEqual. NUNCA guardes ni imprimas una contraseña en texto plano.
+  > - Sesión: token aleatorio de 32 bytes (crypto.randomBytes); en la base guarda solo su hash; cookie HttpOnly, SameSite=Lax, Path=/, con expiración de 7 días (Secure cuando no sea localhost).
+  > - Límite de intentos: máximo 5 fallidos por correo o IP en 10 minutos, con el mensaje genérico 'Correo o contraseña incorrectos' (no reveles cuál de los dos falló).
+  > - Claves (Gemini, secreto de sesión) solo en .env, que debe estar en .gitignore; crea un .env.example sin valores reales. Nunca las envíes al front ni las imprimas en logs.
+  > 
+  > PASO 4 - ENDPOINTS (src/io/server.ts)
+  > - POST /api/auth/registro, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/yo (devuelve el usuario sin hash).
+  > - Exigen sesión: ver y gestionar mis citas, agendar, modificar y cancelar. La lectura de lugares y locales sigue pública para el modo invitado.
+  > - Códigos: 200 correcto, 400 errores de validación, 401 credenciales malas o sin sesión, 429 demasiados intentos.
+  > 
+  > PASO 5 - FRONT (tema oscuro actual de ORBIA: fondo azul marino con degradado, tarjetas #1e293b, acento degradado índigo-violeta, fuente Plus Jakarta Sans)
+  > 1. Iniciar sesión: correo, contraseña, '¿Olvidaste tu contraseña?' (solo visual), botón 'Iniciar sesión', 'Continuar con Google' (solo visual, con la nota 'próximamente'), 'Continuar como invitado' y enlace a Crear cuenta.
+  > 2. Crear cuenta: nombre, correo, contraseña (ayuda: 'Usa al menos 8 caracteres'), casilla de términos y aviso de privacidad, botón 'Crear cuenta' y enlace a Iniciar sesión.
+  > 3. Cuenta: tarjeta con nombre y correo, filas (Mis citas, Mis datos, Notificaciones, Privacidad, Ayuda) y botón 'Cerrar sesión'.
+  > - Errores junto a cada campo (no solo con color), campos con label, foco visible, objetivos táctiles de 44 px como mínimo, botón deshabilitado y mensaje 'Procesando...' mientras se envía.
+  > - Al abrir la app, consulta /api/auth/yo: con sesión va a Servicios; sin sesión, a Iniciar sesión.
+  > - Invitado: explora lugares y locales; al intentar confirmar una cita se le pide iniciar sesión y regresa exactamente a donde estaba.
+  > 
+  > RESTRICCIONES
+  > - Una sola carpeta ORBIA; núcleo puro / shell impuro; no toques acciones.ts ni pipeline.ts por ahora.
+  > - Al terminar: lista los archivos creados o modificados y prueba: registro, cierre de sesión, inicio de sesión, contraseña incorrecta, y acceso a citas sin sesión (debe responder 401)."
+- **Cómo se atendió la petición**:
+  1. **Detección del Entorno y Almacén SQLite (`src/io/db.ts`)**:
+     - Se verificó la versión de Node.js instalada: **v24.20.0** (superior a v22.5). Se utilizó el módulo nativo `node:sqlite` (`DatabaseSync`), por lo que **no se requirió instalar ninguna dependencia nueva**.
+     - Se configuró la base de datos persistente en `data/orbia.db` con modo WAL y llaves foráneas.
+     - Se crearon las tablas `usuarios` (`id`, `nombre`, `correo` único en minúsculas, `hash`, `creadoEn`) y `sesiones` (`tokenHash`, `usuarioId`, `expiraEn`) con sus índices correspondientes.
+     - Se añadieron `data/*.db*`, `*.db-journal`, `*.db-wal` y `*.db-shm` a [.gitignore](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.gitignore).
+     - Se advirtió formalmente la recomendación técnica de ubicar la base de datos fuera de carpetas sincronizadas por OneDrive para evitar bloqueos por candados de sincronización en caliente (`SQLITE_BUSY`).
+  2. **Núcleo Funcional Puro (`src/core/auth.ts`)**:
+     - Se definió `validarRegistro` como función 100% pura que evalúa nombre no vacío, correo con regex estándar RFC 5322 y contraseña >= 8 caracteres, retornando una lista inmutable de errores específicos por campo.
+     - Se crearon las funciones puras `normalizarCorreo` y `aUsuarioPublico` (que filtra de forma determinista el hash de la contraseña), así como los tipos `Usuario` y `UsuarioPublico`.
+  3. **Seguridad Criptográfica y Shell de Autenticación (`src/io/auth.ts`)**:
+     - Contraseñas protegidas mediante `crypto.scrypt` con sal aleatoria de 16 bytes generada por usuario y comparación segura en tiempo constante con `crypto.timingSafeEqual`.
+     - Sesiones criptográficas: tokens aleatorios de 32 bytes (`crypto.randomBytes`) donde solo se guarda el hash SHA-256 en la base de datos.
+     - Cookies de sesión `orbia_sesion` configuradas como `HttpOnly`, `SameSite=Lax`, `Path=/`, expiración de 7 días y directiva `Secure` automática fuera de localhost.
+     - Rate limiter en memoria: máximo 5 fallos por IP o correo en una ventana deslizante de 10 minutos; devuelve HTTP 429 tras superarlo y emite el mensaje genérico `"Correo o contraseña incorrectos"` en caso de fallo (401).
+     - Se actualizó [.env.example](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.env.example) con la variable `SESSION_SECRET=`.
+  4. **Servidor y Endpoints (`src/io/server.ts`)**:
+     - `POST /api/auth/registro`: valida entrada, comprueba duplicidad de correo, hashea contraseña, genera sesión y devuelve 200 con el usuario público y cookie.
+     - `POST /api/auth/login`: valida credenciales, aplica rate limiting y emite cookie.
+     - `POST /api/auth/logout`: invalida la sesión en base de datos y limpia la cookie con `Max-Age=0`.
+     - `GET /api/auth/yo`: retorna 200 con el usuario actual o 401 si no hay sesión.
+     - Catálogo público para invitados: `GET /api/locales` y `GET /api/servicios` sin exigir autenticación.
+     - Protección de citas: `GET /citas`, `POST /citas`, `GET /citas/:id/modificar`, `POST /citas/:id/modificar`, `POST /citas/:id/cancelar` exigen sesión y devuelven 401 si no está autenticado.
+  5. **Vistas e Interfaz de Usuario (`src/views/render.ts`, `public/estilos.css`)**:
+     - `renderFormularioLogin`: campos con etiquetas accesibles, mensajes de error junto a cada campo, enlace visual "¿Olvidaste tu contraseña?", botón "Iniciar sesión" con feedback "Procesando...", botón visual "Continuar con Google (Próximamente)", botón "Continuar como invitado" y enlace a registro.
+     - `renderFormularioRegistro`: campos nombre, correo, contraseña con ayuda de 8 caracteres, checkbox de términos y aviso de privacidad, mensajes de error específicos por campo y enlace a login.
+     - `renderPantallaCuenta`: tarjeta de usuario con inicial en avatar gradiente, correo, fecha de miembro, filas interactivas (Mis citas, Mis datos, Notificaciones, Privacidad, Ayuda) y botón de cierre de sesión interactivo.
+     - Modo Invitado y Redirección: al entrar a `/` sin sesión se dirige a `/login`; con `?modo=invitado` permite explorar y, si intenta agendar, guarda el borrador en `sessionStorage` y pide iniciar sesión regresando al punto de partida.
+     - Estilos CSS: fondo azul marino oscuro con degradados índigo-violeta, tarjetas `#1e293b`, objetivos táctiles con altura mínima de 44 px y foco visible con contorno accesible.
+  6. **Pruebas y Verificación Automatizada**:
+     - Compilación estática `npm run build` ejecutada exitosamente con 0 errores TypeScript.
+     - Suite automatizada de pruebas ejecutada con éxito:
+       1. Acceso a citas sin sesión responde **401**.
+       2. Registro de nuevo usuario emite cookie y devuelve 200 sin exponer hash.
+       3. Consulta de `/api/auth/yo` confirma sesión activa.
+       4. Acceso a citas con sesión responde 200.
+       5. Cierre de sesión revoca token en BD y limpia cookie (subsecuente `/api/auth/yo` responde 401).
+       6. Contraseña errónea responde 401 con mensaje genérico.
+       7. Login exitoso emite nueva sesión válida.
+       8. Catálogo público responde 200 para modo invitado.
+       9. Rate limiting comprobado: el 6º intento fallido consecutivo responde **429**.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/core/auth.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/core/auth.ts)
+    - [src/io/db.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/db.ts)
+    - [src/io/auth.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/auth.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [src/views/render.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/views/render.ts)
+    - [public/estilos.css](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/public/estilos.css)
+    - [.gitignore](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.gitignore)
+    - [.env.example](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.env.example)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **`node:sqlite` (Node.js 22.5+)**: Motor de SQLite síncrono y de alto rendimiento embebido directamente en el runtime de Node.js sin necesidad de compilar paquetes nativos binarios como `better-sqlite3`.
+    - **Scrypt & Timing-Safe Equal**: Algoritmo derivador de claves resistente a ataques de hardware (ASIC/GPU) combinado con comparación en tiempo constante para mitigar ataques de temporización (timing attacks).
+    - **Token Hashing en Base de Datos**: Práctica de seguridad donde los tokens de sesión se almacenan únicamente como su digest SHA-256; si la base de datos se ve comprometida, ningún token en texto plano puede ser usurpado por un atacante.
+    - **WCAG 2.1 Touch Target Size**: Directriz de accesibilidad que exige que todo elemento interactivo táctil mida al menos 44x44 píxeles para garantizar usabilidad en dispositivos móviles y de pantalla táctil.
+
+
 
 
 
