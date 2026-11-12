@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { parsearSolicitudConResiliencia } from "../llm";
+import { parsearSolicitudConResiliencia } from "../../tools/parse";
 import { filtrarDisponibilidad, elegirMejorHorario } from "../../tools/disponibilidad";
 import {
   reservarCita,

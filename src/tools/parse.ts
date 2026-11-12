@@ -102,3 +102,8 @@ export function parsearSolicitudLocal(
 }
 
 export const parsearSolicitud = parsearSolicitudLocal;
+
+export {
+  parsearSolicitudConLLM,
+  parsearSolicitudConResiliencia,
+} from "../io/llm";

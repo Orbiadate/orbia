@@ -1,8 +1,14 @@
 import type { SolicitudUsuario, Cita, Negocio, Horario, Servicio, Recordatorio } from "./types";
-import { parsearSolicitudConLLM } from "./io/llm";
-import { parsearSolicitud } from "./core/parse";
-import { filtrarDisponibilidad, elegirMejorHorario } from "./core/disponibilidad";
-import { reservarCita, cancelarCita, modificarCita, registrarDuracionServicio, consultarCitas, generarRecordatorios } from "./core/acciones";
+import { parsearSolicitudConLLM, parsearSolicitud } from "./tools/parse";
+import { filtrarDisponibilidad, elegirMejorHorario } from "./tools/disponibilidad";
+import {
+  reservarCita,
+  cancelarCita,
+  modificarCita,
+  registrarDuracionServicio,
+  consultarCitas,
+  generarRecordatorios,
+} from "./tools/acciones";
 
 export interface ResultadoAgente {
   exito: boolean;

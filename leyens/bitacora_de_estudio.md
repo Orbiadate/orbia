@@ -1651,3 +1651,30 @@ console.log("Citas registradas:", citas);
     - **Modularización de APIs REST en Express**: Separación de rutas por responsabilidad en módulos independientes (`Router()`), reduciendo la complejidad ciclomática del servidor principal a menos de 50 líneas.
     - **Gestión Global de Temas en Flutter con Material 3**: Uso de `ThemeData` centralizado y clases utilitarias de constantes para desacoplar el diseño visual del código de los widgets.
     - **Comunicación HTTP Cliente-Servidor desacoplada**: El cliente Flutter no ejecuta lógica de disponibilidad de negocio; consulta la API backend (`/api/tools/disponibilidad`) recibiendo respuestas deterministas JSON.
+
+
+---
+
+### Entrada #035 — Planificación de Fase 4: Reestructuración de Backend TypeScript y Roadmap de Fases
+- **Timestamp**: `2026-11-11T19:57:00-06:00`
+- **Indicación (Prompt)**:
+  > "Eres el agente de implementación de ORBIA. Yo soy el arquitecto y te doy la dirección. Antes de mover nada, lista la estructura actual y dime el plan en un mensaje corto. Trabaja solo en la carpeta ORBIA abierta en el IDE y no borres nada sin decírmelo antes.
+  > FASE 4: REESTRUCTURA (solo backend TypeScript, sin tocar Flutter todavía)
+  > 1. CARPETA LEYENS: crea leyens/, mueve notas/bitácoras, leyenda en README, crea leyens/FASES.md.
+  > 2. LÍMITE DE 200 LÍNEAS.
+  > 3. CARPETA TOOLS: src/tools/ con parse, disponibilidad y acciones; núcleo puro / shell impuro.
+  > AL TERMINAR: confirmar compilación, ejecución idéntica a antes, límite 200 líneas y resumen."
+- **Cómo se atendió la petición**:
+  1. Se verificó el estado actual del repositorio, comprobando la integridad de `leyens/`, `src/tools/` y el cumplimiento de las líneas de código.
+  2. Se validó la compilación estática de TypeScript (`npm run build`), certificando cero errores en el backend.
+  3. Siguiendo estrictamente la instrucción previa del arquitecto ("Antes de mover nada, lista la estructura actual y dime el plan en un mensaje corto"), se emitió el diagnóstico conciso de la estructura y el plan de consolidación de la Fase 4 antes de aplicar cambios adicionales.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [leyens/FASES.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/FASES.md)
+    - [leyens/reglas.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/reglas.md)
+    - [src/tools/parse.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/parse.ts)
+    - [src/tools/disponibilidad.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/disponibilidad.ts)
+    - [src/tools/acciones.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/acciones.ts)
+  - **Conceptos clave**:
+    - **Faseado de Proyecto e Ingeniería por Hitos**: División metódica del ciclo de vida del software en fases acotadas (Fase 4 reestructura backend, Fase 5 API REST, Fase 6 base Flutter, etc.) para controlar la complejidad y el alcance de las pruebas.
+    - **Núcleo Funcional Desacoplado**: Organización de utilidades y reglas de negocio en `src/tools/` sin dependencias de I/O, listas para ser expuestas en la API REST de la Fase 5.
