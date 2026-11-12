@@ -22,3 +22,12 @@ data/*.db-*
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+.idea/

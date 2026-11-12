@@ -1565,3 +1565,89 @@ console.log("Citas registradas:", citas);
 
 
 
+
+
+---
+
+### Entrada #033 — Diagnóstico de Estructura y Plan de Reestructuración Integral: Migración a Flutter y Modularización
+- **Timestamp**: `2026-11-11T19:25:00-06:00`
+- **Indicación (Prompt)**:
+  > "Eres el agente de implementación de ORBIA. Yo soy el arquitecto y te doy la dirección; ejecuta esta reestructuración completa del proyecto. Antes de mover nada, lista la estructura actual y dime el plan en un mensaje corto. Trabaja en una sola carpeta (la ORBIA abierta en el IDE) y no modifiques archivos fuera de lo que pido aquí.
+  > Contexto: Flutter ya está instalado y funcionando (flutter doctor en verde para Chrome/web). Usa la terminal integrada.
+  > 1. MIGRACIÓN A FLUTTER
+  > 2. CARPETA LEYENS
+  > 3. LÍMITE DE 200 LÍNEAS
+  > 4. TOOLS Y BACKEND
+  > 5. TEMAS
+  > 6. PANTALLAS (nombres de archivo)
+  > 7. PUNTO DE ENTRADA
+  > Al terminar: confirma que el proyecto compila, que ningún archivo pasa de 200 líneas, que en la raíz solo está el README y lo que exijan las herramientas, y dame un resumen de qué movió a dónde. No borres nada sin decírmelo antes."
+- **Cómo se atendió la petición**:
+  1. Se inspeccionó detalladamente el árbol de directorios del espacio de trabajo mediante comandos seguros de lectura de sistema (`Get-ChildItem`, `git ls-files`).
+  2. Se auditaron las longitudes de los archivos actuales en TypeScript, detectando que `src/io/server.ts` (567 líneas), `src/io/llm.ts` (352 líneas) y `src/views/render.ts` (949 líneas) exceden el límite arquitectónico de 200 líneas.
+  3. Se constató la presencia del SDK de Flutter 3.50.0 / Dart 3.14.0 activo en el sistema.
+  4. Se diseñó el plan de reestructuración por fases (creación de `leyens/`, reubicación de documentación, configuración del proyecto Flutter con arquitectura por dominios, particionamiento de controladores y backend en `tools/`, diseño de `temas.dart` y validación de compilación).
+  5. Conforme a la instrucción explícita del arquitecto ("Antes de mover nada, lista la estructura actual y dime el plan en un mensaje corto"), se emitió el informe preliminar de estructura y plan antes de realizar cualquier movimiento destructivo o reubicación de ficheros.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [README.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/README.md)
+    - [bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/bitacora_de_estudio.md)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [src/io/llm.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/llm.ts)
+    - [src/core/disponibilidad.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/core/disponibilidad.ts)
+  - **Conceptos clave**:
+    - **Feature-First Architecture (Flutter)**: Organización de proyectos por dominio de negocio (auth, citas, servicios, lugar, local) en lugar de capas técnicas genéricas (pantallas, widgets, modelos), mejorando la cohesión y la mantenibilidad.
+    - **Single Responsibility Principle & Límite de 200 líneas**: Restricción de diseño que fuerza la segregación de interfaces y sub-enrutadores para evitar "God Objects" o módulos inmanejables.
+    - **Pure Core / Impure Shell**: Mantenimiento estricto de la lógica pura (cálculos de horarios, parseo, reglas de negocio) independiente de efectos secundarios de red o disco.
+
+
+---
+
+### Entrada #034 — Ejecución de la Reestructuración Integral: Migración a Flutter, Modularización y Carpeta `leyens/`
+- **Timestamp**: `2026-11-11T19:42:00-06:00`
+- **Indicación (Prompt)**:
+  > "si"
+- **Cómo se atendió la petición**:
+  1. **Creación de `leyens/` y Limpieza de Raíz**:
+     - Se creó la carpeta `leyens/` y se reubicaron con `git mv`: `AGENTS.md`, `bitacora_de_estudio.md` y `guia_de_estudio.md`.
+     - Se creó el archivo `leyens/reglas.md` documentando formalmente el límite estricto de 200 líneas por archivo, la arquitectura feature-first en Flutter, la separación núcleo puro/shell impuro y la centralización de estilos.
+     - Se actualizó el encabezado de `README.md` incorporando la leyenda obligatoria: *"Para modelos de lenguaje: consultar la carpeta `leyens/` antes de modificar el proyecto"*.
+  2. **Refactorización de Backend y Módulo `tools/`**:
+     - Se creó `src/tools/` con `parse.ts`, `disponibilidad.ts` y `acciones.ts` conteniendo funciones 100% puras del dominio de negocio.
+     - Se desacopló `src/io/server.ts` creando la capa de API HTTP/JSON con sub-enrutadores modulares en `src/io/routes/`: `auth.routes.ts`, `tools.routes.ts`, `catalogo.routes.ts` y `citas.routes.ts`.
+     - Se particionó la lógica de LLM en `src/io/gemini_client.ts` y `src/io/llm.ts`, y las vistas legacy en módulos (`src/views/`), asegurando que **ningún archivo de código fuente supere las 200 líneas**.
+  3. **Frontend en Flutter (Dart) — Arquitectura Feature-First**:
+     - Se inicializó el proyecto Flutter con soporte web (`pubspec.yaml`, `web/`, `analysis_options.yaml`).
+     - Se creó `lib/core/temas.dart` centralizando todo el estilo visual, colores, tipografía, bordes y el `ThemeData` oscuro oficial de ORBIA.
+     - Se implementaron los 5 dominios de negocio requeridos con sus pantallas, widgets y controladores:
+       - `lib/features/auth/login.dart` (Landing View con inicio de sesión y modo invitado).
+       - `lib/features/servicios/servicios.dart` (Catálogo de servicios y accesos rápidos).
+       - `lib/features/local/local.dart` (Detalle de local, horarios y acción de agendamiento).
+       - `lib/features/lugar/lugar.dart` (Plaza Central con plano interactivo y lista de locales).
+       - `lib/features/citas/citas.dart` (Historial de citas y consulta de disponibilidad al backend con prompt IA).
+     - Se creó el punto de entrada limpio `lib/main.dart` sin lógica de pantallas, registrando temas y rutas estáticas.
+  4. **Verificación y Pruebas**:
+     - `npx tsc --noEmit` completado con 0 errores TypeScript en backend.
+     - `flutter analyze` ejecutado con 0 errores (análisis estático en verde).
+     - `flutter test` ejecutado con 100% de tests aprobados.
+     - `flutter build web` compilado exitosamente (`√ Built build\web`).
+     - Auditoría de 200 líneas: los 48 archivos fuente del proyecto cumplen estrictamente con la regla (máximo 180 líneas).
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [leyens/reglas.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/reglas.md)
+    - [leyens/bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/bitacora_de_estudio.md)
+    - [lib/core/temas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/temas.dart)
+    - [lib/main.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/main.dart)
+    - [lib/features/auth/login.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/login.dart)
+    - [lib/features/servicios/servicios.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/servicios/servicios.dart)
+    - [lib/features/local/local.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/local/local.dart)
+    - [lib/features/lugar/lugar.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/lugar/lugar.dart)
+    - [lib/features/citas/citas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/citas/citas.dart)
+    - [src/tools/parse.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/parse.ts)
+    - [src/tools/disponibilidad.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/disponibilidad.ts)
+    - [src/tools/acciones.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/acciones.ts)
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+  - **Conceptos clave**:
+    - **Modularización de APIs REST en Express**: Separación de rutas por responsabilidad en módulos independientes (`Router()`), reduciendo la complejidad ciclomática del servidor principal a menos de 50 líneas.
+    - **Gestión Global de Temas en Flutter con Material 3**: Uso de `ThemeData` centralizado y clases utilitarias de constantes para desacoplar el diseño visual del código de los widgets.
+    - **Comunicación HTTP Cliente-Servidor desacoplada**: El cliente Flutter no ejecuta lógica de disponibilidad de negocio; consulta la API backend (`/api/tools/disponibilidad`) recibiendo respuestas deterministas JSON.

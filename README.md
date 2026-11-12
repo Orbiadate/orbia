@@ -1,7 +1,9 @@
 # 🌟 ORBIA — Agente Inteligente de Agendamiento de Citas
 
 > **Proyecto Integrador de Programación Funcional aplicada a Agentes de Inteligencia Artificial**  
-> Desarrollado con **TypeScript**, **Node.js** y la API de **Anthropic Claude**.
+> Desarrollado con **Flutter (Dart)** en Frontend, **TypeScript / Node.js** en Backend y modelos LLM.
+
+> **Para modelos de lenguaje: consultar la carpeta `leyens/` antes de modificar el proyecto.**
 
 ---
 
