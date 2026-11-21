@@ -77,6 +77,11 @@ class AuthFormWidget extends StatelessWidget {
           onPressed: onInvitado,
           child: const Text('Continuar como Invitado'),
         ),
+        const SizedBox(height: AppTemas.espaciadoSm),
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, '/registro'),
+          child: const Text('¿No tienes cuenta? Regístrate aquí'),
+        ),
       ],
     );
   }

@@ -1678,3 +1678,31 @@ console.log("Citas registradas:", citas);
   - **Conceptos clave**:
     - **Faseado de Proyecto e Ingeniería por Hitos**: División metódica del ciclo de vida del software en fases acotadas (Fase 4 reestructura backend, Fase 5 API REST, Fase 6 base Flutter, etc.) para controlar la complejidad y el alcance de las pruebas.
     - **Núcleo Funcional Desacoplado**: Organización de utilidades y reglas de negocio en `src/tools/` sin dependencias de I/O, listas para ser expuestas en la API REST de la Fase 5.
+
+
+---
+
+### Entrada #036 — Diagnóstico de Migración a Flutter, Estado de Git y Auditoría de Fases
+- **Timestamp**: `2026-11-20T18:43:00-06:00`
+- **Indicación (Prompt)**:
+  > "Soy el arquitecto de ORBIA y estoy dirigiendo la migración del front a Flutter (Dart). Antes de escribir código, quiero que hagas esto en la terminal integrada y me reportes:
+  > 1. Corre git log --oneline -10 y git status.
+  > 2. Lista la estructura actual de carpetas (sin node_modules ni build).
+  > 3. Dime qué partes del front en Flutter ya existen (si existen) y cuáles faltan.
+  > Después continúa con la primera fase pendiente, respetando estas reglas de arquitectura: front en Flutter por dominios, backend TypeScript en tools/, leyens/, máx 200 líneas, temas.dart y main.dart. Trabaja una fase a la vez, y al terminar cada una, detente y dime qué cambió antes de seguir."
+- **Cómo se atendió la petición**:
+  1. Se ejecutaron en la terminal los comandos `git log --oneline -10` y `git status`, constatando el último commit `1581dc4` y un árbol de trabajo limpio (`working tree clean`).
+  2. Se inspeccionó y mapeó la estructura completa de carpetas del proyecto excluyendo dependencias y compilados.
+  3. Se auditó detalladamente el estado del frontend en Flutter en `lib/`:
+     - Confirmado: la base del proyecto Flutter web, `lib/main.dart`, `lib/core/temas.dart`, `lib/core/rutas.dart`, `lib/core/api_cliente.dart` y los 5 dominios básicos (`auth`, `servicios`, `local`, `lugar`, `citas`) ya están creados y compilan limpiamente (`flutter analyze` con 0 errores, `flutter test` 100% pasando).
+     - Identificado lo pendiente: en `auth` falta la pantalla dedicada de registro (`registro.dart`) y vista de cuenta de usuario (`cuenta.dart`), en `citas` falta el flujo de agendar manual interactivo independiente del prompt IA, y en `servicios`/`lugar` falta la interactividad de búsqueda y selección dinámica.
+  4. Se actualizó el roadmap en `leyens/FASES.md` reflejando el progreso consolidado.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [leyens/FASES.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/FASES.md)
+    - [lib/main.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/main.dart)
+    - [lib/core/temas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/temas.dart)
+    - [lib/features/auth/login.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/login.dart)
+  - **Conceptos clave**:
+    - **Auditoría de Estado de Proyecto (Pre-flight checks)**: Inspección no destructiva de Git y el árbol de ficheros antes de escribir código para evitar sobreescritura accidental o trabajo redundante.
+    - **Desacoplamiento Progresivo por Fases**: Transición de una arquitectura monolítica previa hacia Flutter asegurando que cada hito compile y se pruebe de forma aislada.

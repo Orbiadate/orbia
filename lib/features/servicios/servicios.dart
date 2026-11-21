@@ -91,13 +91,13 @@ class _ServiciosViewState extends State<ServiciosView> {
         onTap: (index) {
           if (index == 0) Navigator.pushReplacementNamed(context, AppRutas.lugar);
           if (index == 2) Navigator.pushNamed(context, AppRutas.citas);
-          if (index == 3) Navigator.pushNamed(context, AppRutas.local);
+          if (index == 3) Navigator.pushNamed(context, AppRutas.cuenta);
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'Explorar'),
           BottomNavigationBarItem(icon: Icon(Icons.spa_outlined), label: 'Servicios'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month_outlined), label: 'Citas'),
-          BottomNavigationBarItem(icon: Icon(Icons.store_outlined), label: 'Local'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Cuenta'),
         ],
       ),
     );
