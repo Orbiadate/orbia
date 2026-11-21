@@ -1,31 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/temas.dart';
-import '../../core/rutas.dart';
-import 'lugar_controller.dart';
-import 'widgets/plano_widget.dart';
 
-/// Pantalla del Lugar (Requisito 6)
-class LugarView extends StatefulWidget {
+/// Pantalla base del dominio Lugar (Fase 2)
+class LugarView extends StatelessWidget {
   const LugarView({super.key});
-
-  @override
-  State<LugarView> createState() => _LugarViewState();
-}
-
-class _LugarViewState extends State<LugarView> {
-  final _controller = LugarController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.cargarLugar();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,67 +12,40 @@ class _LugarViewState extends State<LugarView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plaza Central'),
+        title: const Text('Plaza Central (Lugar)'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
       ),
-      body: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          if (_controller.cargando) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final lugar = _controller.lugar;
-          final nombre = lugar['nombre']?.toString() ?? 'Plaza Central';
-          final subtitulo = lugar['subtitulo']?.toString() ?? 'Directorio de locales';
-
-          return ListView(
-            padding: const EdgeInsets.all(AppTemas.espaciadoMd),
-            children: [
-              Text(nombre, style: tema.textTheme.titleLarge),
-              const SizedBox(height: 2),
-              Text(subtitulo, style: tema.textTheme.bodyMedium),
-              const SizedBox(height: AppTemas.espaciadoMd),
-
-              // Widget interactivo del Plano
-              PlanoWidget(
-                titulo: 'Distribución de Locales',
-                onLocalSeleccionado: () => Navigator.pushNamed(context, AppRutas.local),
+      body: ListView(
+        padding: const EdgeInsets.all(AppTemas.espaciadoMd),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTemas.espaciadoMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Plano y Directorio', style: tema.textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text('Explora los establecimientos en Plaza Central.', style: tema.textTheme.bodyMedium),
+                ],
               ),
-              const SizedBox(height: AppTemas.espaciadoLg),
-
-              Text('Locales en este Lugar', style: tema.textTheme.titleMedium),
-              const SizedBox(height: AppTemas.espaciadoSm),
-
-              ..._controller.locales.map((loc) {
-                final esBarberia = loc['id'] == 'local-12';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppTemas.espaciadoSm),
-                  child: Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: esBarberia ? AppTemas.primario : AppTemas.fondoSecundario,
-                        child: Icon(
-                          esBarberia ? Icons.content_cut : Icons.store,
-                          color: Colors.white,
-                        ),
-                      ),
-                      title: Text(loc['nombre']?.toString() ?? '', style: tema.textTheme.titleMedium),
-                      subtitle: Text('${loc['tipo']} · Local ${loc['numeroLocal']}', style: tema.textTheme.bodyMedium),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pushNamed(context, AppRutas.local),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          );
-        },
+            ),
+          ),
+          const SizedBox(height: AppTemas.espaciadoMd),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.store, color: AppTemas.primario),
+              title: const Text('Local 12 — Barbería Clásica'),
+              subtitle: Text('Barbería y Estética', style: tema.textTheme.bodyMedium),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/local'),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-

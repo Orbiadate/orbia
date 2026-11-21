@@ -28,3 +28,16 @@ Este documento compila las directrices oficiales que rigen el desarrollo del pro
 ## 5. Entrada Única y Rutas Limpias
 - El punto de entrada del cliente es `lib/main.dart`, responsable únicamente de inicializar la app, configurar el tema y registrar las rutas por dominios. Cero lógica de presentación de pantallas en él.
 
+## 6. Puertos y Comandos de Ejecución (Backend y Frontend)
+Para garantizar la separación estricta entre el cliente y el servidor:
+- **Backend (Node.js / Express en TypeScript)**:
+  - **Puerto**: `3000` (`http://localhost:3000`)
+  - **Comando**: `npm run dev`
+  - **Ruta raíz**: `GET /` responde `{"servicio":"ORBIA API","estado":"ok"}`
+  - **Capa API**: `http://localhost:3000/api/...`
+- **Frontend (Flutter / Dart Web)**:
+  - **Puerto fijo**: `8080` (`http://localhost:8080`)
+  - **Comando**: `flutter run -d chrome --web-port 8080`
+  - **Verificación**: `flutter analyze` y `flutter test`
+
+

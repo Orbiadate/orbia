@@ -33,6 +33,11 @@ app.use("/api/auth", authRouter);
 app.use("/api/citas", citasRouter);
 app.use("/api", catalogoRouter);
 
+// Ruta raíz de verificación de API
+app.get("/", (_req: Request, res: Response) => {
+  res.json({ servicio: "ORBIA API", estado: "ok" });
+});
+
 // Health check
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true, version: "2.0.0", backend: "TypeScript / Node.js", front: "Flutter (Dart)" });

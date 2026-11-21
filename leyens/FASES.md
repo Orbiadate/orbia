@@ -1,15 +1,16 @@
 # Fases de ORBIA
-Estado: Fase 7 en curso (Cuenta y autenticación en Flutter).
-Hechas:
-- Fase 1: Núcleo puro (acciones, disponibilidad, parse determinista).
-- Fase 2: Prototipo con cita confirmada.
-- Fase 3: LLM real con Gemini (reintentos, backoff, plan B).
-- Fase 4: Reestructura arquitectónica (leyens/, tools/, regla estricta máx. 200 líneas).
-- Fase 5: API HTTP/JSON del backend en TypeScript (rutas modulares con CORS).
-- Fase 6: Base de Flutter (proyecto web, feature-first, main.dart, temas.dart).
-En curso:
-- Fase 7: Cuenta y autenticación (login, registro y perfil en Flutter).
-Pendientes:
-- Fase 8: Servicios, lugares y locales (catálogo interactivo y plano).
-- Fase 9: Agendar citas manual y con asistente IA.
-- Fase 10: Pulido, responsive y entrega final.
+
+## Backend (TypeScript / Express)
+- **Fase 1**: Núcleo puro (acciones, disponibilidad, parse determinista). [Completada]
+- **Fase 2**: Prototipo funcional con cita confirmada. [Completada]
+- **Fase 3**: Integración LLM real con Gemini (resiliencia, backoff y fallback). [Completada]
+- **Fase 4**: Reestructura arquitectónica (leyens/, tools/, máx. 200 líneas). [Completada]
+- **Fase 5**: Capa de API HTTP/JSON modular con CORS para Flutter. [Completada]
+
+## Frontend (Flutter / Dart Web)
+- **Fase 1 (Front)**: Inicialización del proyecto Flutter Web con arquitectura Feature-First (auth, servicios, local, lugar, citas). [Completada]
+- **Fase 2 (Front)**: Tema centralizado (`temas.dart`), enrutador declarativo (`go_router`), shell con barra de navegación inferior persistente (Servicios, Citas, Cuenta) y pantallas placeholder por dominio. [Completada]
+- **Fase 3 (Front)**: Autenticación y Cuentas (Login, Registro y Perfil). [Pendiente]
+- **Fase 4 (Front)**: Servicios, Lugares y Locales (Catálogo interactivo, plano de Plaza Central). [Pendiente]
+- **Fase 5 (Front)**: Agendamiento de citas (Selector manual y Asistente en lenguaje natural con IA). [Pendiente]
+- **Fase 6 (Front)**: Pulido visual, responsive y entrega final. [Pendiente]

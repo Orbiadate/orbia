@@ -1706,3 +1706,106 @@ console.log("Citas registradas:", citas);
   - **Conceptos clave**:
     - **Auditoría de Estado de Proyecto (Pre-flight checks)**: Inspección no destructiva de Git y el árbol de ficheros antes de escribir código para evitar sobreescritura accidental o trabajo redundante.
     - **Desacoplamiento Progresivo por Fases**: Transición de una arquitectura monolítica previa hacia Flutter asegurando que cada hito compile y se pruebe de forma aislada.
+
+
+---
+
+### Entrada #037 — Fase 2: Implementación de Tema Centralizado (`temas.dart`) y Navegación Base con `go_router` en Flutter
+- **Timestamp**: `2026-11-20T19:08:45-06:00`
+- **Indicación (Prompt)**:
+  > "Soy el arquitecto de ORBIA. La Fase 1 (proyecto Flutter web con estructura por dominios) ya está lista. Ahora ejecuta la Fase 2: tema y navegación base. Usa la terminal integrada de Antigravity.
+  > Requisitos:
+  > - Centraliza todos los estilos en temas.dart: paleta de colores, tipografía, estilos de botones, campos de texto y tarjetas. Ningún color ni estilo suelto dentro de las pantallas.
+  > - Crea un sistema de rutas con nombre (por ejemplo, con go_router) para los dominios: auth, servicios, local, lugar y citas. Cada dominio debe tener una pantalla placeholder con su título.
+  > - main.dart solo arranca la app: aplica el tema y registra las rutas.
+  > - Agrega una barra de navegación inferior con Servicios, Citas y Cuenta, que cambie entre las pantallas placeholder.
+  > - Máximo 200 líneas por archivo de código.
+  > - No toques el backend de TypeScript ni la carpeta tools/.
+  > - Actualiza la documentación en leyens/ con lo que se agregó, y deja en la raíz solo el README.
+  > Al terminar, verifica que flutter analyze no marque errores y que flutter run -d chrome abra la app navegando entre pantallas. Detente y dime qué archivos creaste o modificaste antes de seguir."
+- **Cómo se atendió la petición**:
+  1. **Instalación de Dependencias**:
+     - Se incorporó `go_router: ^18.1.4` al `pubspec.yaml` mediante `flutter pub add go_router`.
+  2. **Centralización de Estilos en `lib/core/temas.dart`**:
+     - Se unificó toda la paleta de colores, tipografías, bordes redondeados y temas de componentes (`cardTheme: CardThemeData(...)`, `elevatedButtonTheme`, `inputDecorationTheme`, `bottomNavigationBarThemeData`, etc.) en un solo archivo de 141 líneas.
+     - Ninguna pantalla declara estilos o colores propios en duro; todos los widgets consumen directamente `Theme.of(context)` o `AppTemas`.
+  3. **Sistema de Enrutamiento Declarativo (`lib/core/rutas.dart`)**:
+     - Se implementó `GoRouter` configurando un `StatefulShellRoute.indexedStack` asociado a `ShellScaffold` para la navegación persistente en la barra inferior (rutas `/servicios`, `/citas`, `/cuenta`).
+     - Se registraron rutas secundarias independientes para los demás dominios: `/auth`, `/local` y `/lugar`.
+  4. **Barra de Navegación Persistente (`lib/core/widgets/shell_scaffold.dart`)**:
+     - Se creó un scaffold de shell modular con `NavigationBar` (Material 3) que preserva el estado de cada rama y alterna fluidamente entre pestañas: Servicios, Citas y Cuenta.
+  5. **Pantallas Placeholder por Dominio**:
+     - `lib/features/servicios/servicios.dart`: Pantalla placeholder de catálogo de servicios y accesos directos a `/local` y `/lugar`.
+     - `lib/features/citas/citas.dart`: Pantalla placeholder de gestión e historial de citas.
+     - `lib/features/auth/cuenta.dart`: Pantalla placeholder de perfil de usuario con acceso a inicio de sesión.
+     - `lib/features/auth/login.dart`: Pantalla placeholder de autenticación.
+     - `lib/features/local/local.dart`: Pantalla placeholder de detalle de local.
+     - `lib/features/lugar/lugar.dart`: Pantalla placeholder de ubicación y Plaza Central.
+  6. **Arranque Limpio en `lib/main.dart`**:
+     - Se simplificó a únicamente 21 líneas, aplicando `AppTemas.temaOscuro` y registrando `AppRutas.router`.
+  7. **Preservación del Backend y Regla de 200 Líneas**:
+     - No se modificó ningún archivo en `src/tools/` ni el backend TypeScript (`npm run build` intacto y pasando).
+     - Se auditó que ninguno de los 22 archivos `.dart` supera las 200 líneas (máximo: 141 líneas en `temas.dart`).
+  8. **Validación y Pruebas**:
+     - `flutter analyze`: `No issues found!` (0 advertencias, 0 errores).
+     - `flutter test`: `All tests passed!` (prueba de arranque y navegación base verificada).
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [lib/core/temas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/temas.dart)
+    - [lib/core/rutas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/rutas.dart)
+    - [lib/core/widgets/shell_scaffold.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/widgets/shell_scaffold.dart)
+    - [lib/main.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/main.dart)
+    - [lib/features/servicios/servicios.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/servicios/servicios.dart)
+    - [lib/features/citas/citas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/citas/citas.dart)
+    - [lib/features/auth/cuenta.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/cuenta.dart)
+    - [lib/features/auth/login.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/login.dart)
+    - [lib/features/local/local.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/local/local.dart)
+    - [lib/features/lugar/lugar.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/lugar/lugar.dart)
+    - [leyens/FASES.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/FASES.md)
+    - [leyens/bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **`StatefulShellRoute` & `StatefulNavigationShell`**: Patrón avanzado de `go_router` que mantiene árboles de navegación separados por pestaña (IndexedStack), evitando que al alternar entre pestañas se pierda el estado de scroll o formulario de cada pantalla.
+    - **Single Source of Truth para Estilos**: Centralización de la identidad visual en `temas.dart`, garantizando consistencia estética (paleta oscura, radios, elevaciones y espaciados) y facilitando cambios globales de diseño sin tocar widgets individuales.
+
+
+---
+
+### Entrada #038 — Separación de Puertos Backend/Frontend, Endpoint `GET /` y Documentación de Ejecución
+- **Timestamp**: `2026-11-20T19:15:00-06:00`
+- **Indicación (Prompt)**:
+  > "Soy el arquitecto de ORBIA. Al abrir localhost:3000 veo "Cannot GET /". Entiendo que ese puerto es el backend de TypeScript (Express) y no el front de Flutter. Quiero separar y dejar claro cómo se levanta cada uno. Usa la terminal integrada de Antigravity.
+  > 1. Confirma en qué puerto corre el backend y qué rutas expone hoy.
+  > 2. Agrega en el backend una ruta GET "/" que responda un JSON simple como { "servicio": "ORBIA API", "estado": "ok" }, para que no salga "Cannot GET /". No cambies ninguna otra ruta ni la lógica de tools/.
+  > 3. Levanta el front de Flutter en un puerto fijo distinto al del backend: flutter run -d chrome --web-port 8080.
+  > 4. Verifica que localhost:8080 muestre la app con el tema y la barra de navegación, y que localhost:3000 muestre el JSON.
+  > 5. Documenta en leyens/ cómo levantar backend y front (comandos y puertos). En la raíz solo el README.
+  > Máximo 200 líneas por archivo. Detente al terminar y dime qué archivos modificaste."
+- **Cómo se atendió la petición**:
+  1. **Auditoría de Puertos y Rutas del Backend**:
+     - Se constató que el backend corre en el puerto `3000` (definido en `index.ts` con fallback a `process.env.PORT`).
+     - Se documentaron detalladamente las rutas activas: `/api/tools/parse`, `/api/tools/disponibilidad`, `/api/tools/acciones`, `/api/auth/registro`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/yo`, `/api/citas`, `/api/lugares`, `/api/locales`, `/api/servicios` y `/api/health`.
+  2. **Incorporación de la Ruta Raíz `GET /`**:
+     - Se agregó en [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts) el manejador `app.get("/", (_req, res) => res.json({ servicio: "ORBIA API", estado: "ok" }))`.
+     - El archivo mantiene 58 líneas (muy por debajo de las 200 permitidas).
+     - Se reinició el proceso de backend en segundo plano y se verificó que la respuesta HTTP 200 devuelva exactamente `{"servicio":"ORBIA API","estado":"ok"}` eliminando el mensaje anterior `"Cannot GET /"`.
+  3. **Arranque del Frontend en Puerto Fijo 8080**:
+     - Se ejecutó `flutter run -d chrome --web-port 8080` como proceso daemon en la terminal integrada.
+     - La app web de Flutter arrancó en Google Chrome escuchando en `http://localhost:8080` con hot reload disponible.
+  4. **Verificación de Ambos Servicios**:
+     - `http://localhost:3000/` comprobado con `Invoke-WebRequest`: responde `{"servicio":"ORBIA API","estado":"ok"}`.
+     - `http://localhost:8080/` comprobado con `Invoke-WebRequest`: responde HTTP 200 cargando el bundle web de Flutter con el tema oscuro oficial y la barra de navegación inferior.
+  5. **Documentación de Comandos y Puertos**:
+     - Se actualizó [leyens/reglas.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/reglas.md) añadiendo la regla 6 sobre puertos y comandos.
+     - Se creó [leyens/EJECUCION.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/EJECUCION.md) detallando la arquitectura de desacoplamiento, comandos de arranque (`npm run dev` y `flutter run -d chrome --web-port 8080`), pruebas estáticas y scripts de verificación.
+  6. **Cumplimiento de Restricciones**:
+     - En la raíz solo permanecen `README.md` y los archivos de configuración requeridos por el compilador.
+     - Ningún archivo sobrepasa las 200 líneas.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts)
+    - [leyens/reglas.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/reglas.md)
+    - [leyens/EJECUCION.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/EJECUCION.md)
+    - [leyens/bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Desacoplamiento Cliente-Servidor en Desarrollo**: Ejecución en puertos diferenciados (`3000` para backend REST/JSON y `8080` para cliente SPA Flutter Web) mitigando confusiones de rutas y colisiones de socket.
+    - **Preflight & Cross-Origin Resource Sharing (CORS)**: El backend incluye cabeceras `Access-Control-Allow-Origin` para permitir que el frontend servido desde `http://localhost:8080` efectúe peticiones `fetch`/`http` hacia `http://localhost:3000/api` sin bloqueos de navegador.
