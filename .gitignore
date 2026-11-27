@@ -22,6 +22,7 @@ data/*.db-*
 *.db-journal
 *.db-wal
 *.db-shm
+data/usuarios.json
 
 # Flutter & Dart
 .dart_tool/

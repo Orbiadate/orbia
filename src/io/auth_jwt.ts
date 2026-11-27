@@ -1,8 +1,20 @@
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import type { UsuarioPublico } from "../tools/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "orbia-super-secret-key-2026";
+function resolverJwtSecret(): string {
+  const secreto = process.env.JWT_SECRET;
+  if (secreto && secreto.trim().length > 0) {
+    return secreto.trim();
+  }
+  console.warn(
+    "[SEGURIDAD] Advertencia: JWT_SECRET no está definido en el entorno. Se generó un secreto aleatorio para esta sesión."
+  );
+  return crypto.randomBytes(64).toString("hex");
+}
+
+const JWT_SECRET = resolverJwtSecret();
 const EXPIRACION_TOKEN = "7d";
 
 export async function hashearPassword(contrasena: string): Promise<string> {

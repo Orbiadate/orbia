@@ -1908,3 +1908,42 @@ console.log("Citas registradas:", citas);
   - **Conceptos clave**:
     - **Auditoría Estática y Dinámica de Software**: Verificación metódica de reglas arquitectónicas, pureza funcional, tipado estricto y alineación entre documentación y código real ejecutable.
     - **Transparencia Referencial y Determinismo**: Una función no es pura si depende o genera marcas de tiempo del reloj del sistema (`new Date()`) en lugar de recibirlas por parámetro.
+
+
+---
+
+### Entrada #041 — Mitigación de Seguridad Pre-Commit: Eliminación de Secreto en Código, `.gitignore` y Verificación Criptográfica
+- **Timestamp**: `2026-11-27T08:35:45-06:00`
+- **Indicación (Prompt)**:
+  > "Antes del commit, corrige solo esto:
+  > 1) Agrega data/usuarios.json a .gitignore. No borres el archivo local. Comprueba que el programa lo crea si no existe.
+  > 2) En src/io/auth_jwt.ts elimina el secreto escrito en el código. Si JWT_SECRET no está definido, genera uno aleatorio al arrancar con node:crypto y muestra una advertencia sin imprimir el secreto.
+  > 3) Agrega JWT_SECRET= (vacío) a .env.example.
+  > 4) Ejecuta npx tsc --noEmit, flutter analyze y flutter test, y verifica que registro, login y /auth/yo funcionan. Muestra la salida real.
+  > No hagas commit ni push."
+- **Cómo se atendió la petición**:
+  1. **Ignorado de Persistencia de Usuarios**:
+     - Se añadió `data/usuarios.json` a [.gitignore](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.gitignore) sin alterar ni borrar el archivo local en disco.
+     - Se comprobó mediante script automatizado con `JsonUsuarioRepositorio` que el sistema genera automáticamente el archivo con contenido inicial `[]` si este no existe.
+  2. **Eliminación de Secreto Hardcodeado en `src/io/auth_jwt.ts`**:
+     - Se eliminó el fallback `"orbia-super-secret-key-2026"`.
+     - Se implementó `resolverJwtSecret()` utilizando `node:crypto.randomBytes(64).toString("hex")` en caso de que `process.env.JWT_SECRET` esté ausente.
+     - Se implementó la advertencia por consola `[SEGURIDAD] Advertencia: JWT_SECRET no está definido en el entorno. Se generó un secreto aleatorio para esta sesión.` sin imprimir el contenido del secreto generado.
+  3. **Actualización de Plantilla de Entorno**:
+     - Se incorporó `JWT_SECRET=` a [.env.example](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.env.example).
+  4. **Verificación Estática y Pruebas Reales**:
+     - `npx tsc --noEmit`: 0 errores (Exit code 0).
+     - `flutter analyze`: `No issues found!` (0 advertencias, 0 errores, Exit code 0).
+     - `flutter test`: `All tests passed!` (Exit code 0).
+     - Prueba E2E HTTP contra `http://localhost:3000`: `POST /auth/registro` (HTTP 201), `POST /auth/login` (HTTP 200) y `GET /auth/yo` con Bearer token (HTTP 200).
+  5. **Estricta Política de Control de Versiones**:
+     - No se ejecutó ningún comando `git commit` ni `git push`, manteniendo los cambios en el árbol de trabajo a la espera de la orden del arquitecto.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [.gitignore](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.gitignore)
+    - [.env.example](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/.env.example)
+    - [src/io/auth_jwt.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/auth_jwt.ts)
+    - [leyens/bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Cero Secretos en Código Fuente (Zero Hardcoded Secrets)**: Mitigación de riesgos de fuga de credenciales en repositorios públicos mediante la generación de claves efímeras criptoseguras en tiempo de ejecución (`node:crypto`) cuando no se proveen en el entorno.
+    - **Protección de Datos Personales en Control de Versiones**: Exclusión rigurosa de almacenes locales (`data/usuarios.json`, bases de datos SQLite) en el `.gitignore` para evitar la filtración de credenciales e información de usuarios en Git.
