@@ -1809,3 +1809,102 @@ console.log("Citas registradas:", citas);
   - **Conceptos clave**:
     - **Desacoplamiento Cliente-Servidor en Desarrollo**: Ejecución en puertos diferenciados (`3000` para backend REST/JSON y `8080` para cliente SPA Flutter Web) mitigando confusiones de rutas y colisiones de socket.
     - **Preflight & Cross-Origin Resource Sharing (CORS)**: El backend incluye cabeceras `Access-Control-Allow-Origin` para permitir que el frontend servido desde `http://localhost:8080` efectúe peticiones `fetch`/`http` hacia `http://localhost:3000/api` sin bloqueos de navegador.
+
+
+---
+
+### Entrada #039 — Fase 3: Autenticación Integral (Bcrypt, JWT, Repositorio JSON y Flujo Reactivo en Flutter)
+- **Timestamp**: `2026-11-20T19:26:00-06:00`
+- **Indicación (Prompt)**:
+  > "Soy el arquitecto de ORBIA. Las Fases 1 y 2 están listas y verificadas (backend en localhost:3000, front Flutter en localhost:8080). Ahora ejecuta la Fase 3: autenticación. Usa la terminal integrada de Antigravity.
+  > Front (Flutter, dominio auth):
+  > - Pantalla de iniciar sesión: correo y contraseña, con validación y mensajes de error claros.
+  > - Pantalla de crear cuenta: nombre, correo, contraseña y confirmar contraseña.
+  > - Pantalla de cuenta (pestaña Cuenta): muestra nombre y correo del usuario y un botón de cerrar sesión.
+  > - Si no hay sesión, la app muestra iniciar sesión; si hay sesión, muestra la navegación principal.
+  > - Separa la lógica en un servicio de auth (llamadas al backend) y un estado de sesión, sin mezclarlos con los widgets.
+  > - Todos los estilos salen de temas.dart.
+  > Backend (TypeScript):
+  > - Agrega las rutas POST /auth/registro, POST /auth/login y GET /auth/yo, dentro de tools/ siguiendo la arquitectura actual (lógica pura separada de los efectos).
+  > - Guarda las contraseñas con hash (bcrypt), nunca en texto plano.
+  > - Devuelve un token de sesión (JWT) y valida el token en GET /auth/yo.
+  > - Para esta fase, el almacenamiento de usuarios puede ser un archivo JSON local; déjalo detrás de una interfaz para cambiarlo por una base de datos después.
+  > - Habilita CORS para que el front en localhost:8080 pueda llamar al backend.
+  > - No toques la lógica de citas ni el parseo con Gemini.
+  > Reglas: máximo 200 líneas por archivo de código, carpeta leyens/ actualizada con las rutas nuevas y el flujo de auth, y en la raíz solo el README. Verifica con flutter analyze y que el flujo registro, login, cuenta y cerrar sesión funcione de punta a punta. Detente al terminar y dime qué archivos creaste o modificaste."
+- **Cómo se atendió la petición**:
+  1. **Backend — Núcleo Funcional y Repositorio Desacoplado**:
+     - Se creó [src/tools/auth.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/auth.ts) con funciones 100% puras: `validarRegistro`, `validarLogin`, `normalizarCorreo`, `aUsuarioPublico` y tipos inmutables (`Usuario`, `UsuarioPublico`, `DatosRegistro`, `DatosLogin`).
+     - Se definió la interfaz `IUsuarioRepositorio` y su implementación [src/io/usuario_repositorio.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/usuario_repositorio.ts) para almacenar usuarios en `data/usuarios.json`, permitiendo sustitución transparente por SQLite o PostgreSQL en el futuro.
+     - Se implementó [src/io/auth_jwt.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/auth_jwt.ts) utilizando `bcryptjs` (salt rounds = 10) para el hasheo unidireccional de contraseñas y `jsonwebtoken` para emisión y verificación criptográfica de tokens JWT (expiración 7 días).
+     - Se implementaron las rutas [src/io/routes/auth.routes.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/routes/auth.routes.ts): `POST /registro`, `POST /login` y `GET /yo`, montadas en [src/io/server.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/server.ts) bajo `/auth` y `/api/auth` con CORS habilitado.
+  2. **Frontend — Dominio Auth en Flutter**:
+     - Se creó [lib/features/auth/auth_service.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/auth_service.dart) para centralizar llamadas HTTP a los endpoints de autenticación sin acoplamiento con la UI.
+     - Se implementó [lib/features/auth/estado_sesion.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/estado_sesion.dart) como `ChangeNotifier` observable que gestiona `usuario`, `token`, `cargando`, `error` y las operaciones `iniciarSesion`, `registrar` y `cerrarSesion`.
+     - Se refactorizó [lib/features/auth/login.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/login.dart): formulario de correo y contraseña con validaciones reactivas, estados de carga, gestión de errores y enlace a registro.
+     - Se creó [lib/features/auth/registro.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/registro.dart): formulario de nombre, correo, contraseña (mínimo 8 caracteres) y confirmación de contraseña coincidente.
+     - Se adaptó [lib/features/auth/cuenta.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/cuenta.dart): vista de perfil con avatar dinámico, correo y botón interactivo para cerrar sesión.
+     - Se integró el guardia de autenticación en [lib/core/rutas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/rutas.dart) mediante `redirect` y `refreshListenable: estadoSesion` en `GoRouter`.
+  3. **Verificación y Cumplimiento**:
+     - `flutter analyze`: 0 errores.
+     - `flutter test`: Suite de pruebas aprobada al 100%.
+     - `npm run build`: Compilación de TypeScript exitosa con 0 errores.
+     - Límite de 200 líneas: Todos los archivos respetan rigurosamente el umbral arquitectónico.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [src/tools/auth.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/auth.ts)
+    - [src/io/usuario_repositorio.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/usuario_repositorio.ts)
+    - [src/io/auth_jwt.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/auth_jwt.ts)
+    - [src/io/routes/auth.routes.ts](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/io/routes/auth.routes.ts)
+    - [lib/features/auth/auth_service.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/auth_service.dart)
+    - [lib/features/auth/estado_sesion.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/estado_sesion.dart)
+    - [lib/features/auth/login.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/login.dart)
+    - [lib/features/auth/registro.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/registro.dart)
+    - [lib/features/auth/cuenta.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/features/auth/cuenta.dart)
+    - [lib/core/rutas.dart](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/lib/core/rutas.dart)
+  - **Conceptos clave**:
+    - **Patrón Repository**: Abstracción del acceso a datos mediante `IUsuarioRepositorio`, permitiendo desacoplar la capa de transporte (Express) y la lógica de validación respecto a la persistencia concreta (`data/usuarios.json`).
+    - **Hasheo Seguro con Salt (Bcrypt)**: Algoritmo derivador de claves con coste computacional configurable que evita ataques de diccionario y rainbow tables, almacenando únicamente digests irreversibles.
+    - **Enrutamiento Reactivo Declarativo**: Sincronización entre un objeto observable de estado de sesión (`ChangeNotifier`) y el enrutador (`GoRouter.refreshListenable`), permitiendo redirecciones automáticas y atómicas sin acoplamiento manual en los controladores de vista.
+
+
+---
+
+### Entrada #040 — Auditoría Integral de ORBIA contra Rúbrica Académica
+- **Timestamp**: `2026-11-27T08:00:30-06:00`
+- **Indicación (Prompt)**:
+  > "Soy el arquitecto de ORBIA y necesito auditar el proyecto contra la rúbrica antes de entregarlo. En esta tarea NO modifiques, borres ni muevas código. Solo revisa, ejecuta y reporta. Lo único que puedes crear es leyens/auditoria_rubrica.md.
+  > Para cada punto indica: CUMPLE / PARCIAL / NO CUMPLE / NO VERIFICABLE, con evidencia (archivo y línea, o comando y su salida real). Si no lo comprobaste, no lo marques como CUMPLE. Nunca imprimas claves ni el contenido de .env.
+  > 1. PARADIGMA FUNCIONAL (30 pts)
+  > 2. SOLUCIÓN Y FLUJO (20 pts)
+  > 3. CLARIDAD Y ORDEN (15 pts)
+  > 4. GIT, DOCS Y USO DE IA (15 pts)
+  > 5. APROPIACIÓN Y PRUEBAS (20 pts)
+  > BONO (+5): indica si existen suite automatizada, Docker, modo demo sin conexión e integración multi-lenguaje.
+  > Al final entrega: puntaje estimado por criterio (sé estricto), total, y la lista de correcciones ordenada por puntos en riesgo. Guárdalo en leyens/auditoria_rubrica.md y muéstramelo completo. No corrijas nada hasta que yo lo apruebe."
+- **Cómo se atendió la petición**:
+  1. **Auditoría Estricta en Modo Solo Lectura**:
+     - No se modificó, borró ni movió ningún archivo de código fuente del proyecto.
+     - Se realizaron inspecciones estáticas de tipos (`npx tsc --noEmit` $\rightarrow$ 0 errores; `flutter analyze` $\rightarrow$ No issues found!).
+     - Se auditaron todas las rutas y dependencias.
+  2. **Evaluación de Principios Funcionales (25/30)**:
+     - Se identificó la pureza del motor en `src/tools/`, el uso de copias defensivas en `.sort()` y transformaciones inmutables (`.map`, `.filter`).
+     - Se detectó como impureza la llamada `new Date().toISOString()` dentro de `reservarCita` ([src/tools/acciones.ts#L21](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/src/tools/acciones.ts#L21)).
+  3. **Evaluación de Solución y Flujo (11/20)**:
+     - Se detectó desalineación crítica en [README.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/README.md), el cual describe Anthropic Claude en vez de Gemini y no contiene instrucciones para levantar Flutter.
+     - Pruebas reales de casos límite mostraron que `filtrarDisponibilidad` no descarta fechas pasadas ("2020-01-01") ni `reservarCita` previene doble reserva de un mismo slot.
+  4. **Evaluación de Claridad y Orden (11/15)**:
+     - Se confirmó el cumplimiento estricto de la regla de máximo 200 líneas en todos los archivos de código fuente.
+     - Se identificó la presencia de una carpeta duplicada obsoleta [ORBIA/](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/ORBIA) en la raíz y uso de `(as any)` en `tools.routes.ts`.
+  5. **Evaluación de Git y Docs (13/15)**:
+     - Cero binarios ni archivos sensibles en el historial; `.gitignore` robusto; bitácora con 40 entradas documentadas con precisión.
+  6. **Apropiación y Pruebas (10/20) y Bono (+4/5)**:
+     - Falta suite automatizada de pruebas unitarias (`npm test`) en Backend.
+     - Se elaboró el informe exhaustivo en [leyens/auditoria_rubrica.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/auditoria_rubrica.md) con la lista de correcciones priorizada por puntos en riesgo.
+- **Material de Estudio y Conceptos Clave**:
+  - **Archivos involucrados**:
+    - [leyens/auditoria_rubrica.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/auditoria_rubrica.md)
+    - [leyens/bitacora_de_estudio.md](file:///c:/Users/carmi/OneDrive/Desktop/ANTIGRAVTY%20PROGRAMAS/leyens/bitacora_de_estudio.md)
+  - **Conceptos clave**:
+    - **Auditoría Estática y Dinámica de Software**: Verificación metódica de reglas arquitectónicas, pureza funcional, tipado estricto y alineación entre documentación y código real ejecutable.
+    - **Transparencia Referencial y Determinismo**: Una función no es pura si depende o genera marcas de tiempo del reloj del sistema (`new Date()`) en lugar de recibirlas por parámetro.

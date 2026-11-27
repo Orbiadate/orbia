@@ -10,7 +10,7 @@
 ## Frontend (Flutter / Dart Web)
 - **Fase 1 (Front)**: Inicialización del proyecto Flutter Web con arquitectura Feature-First (auth, servicios, local, lugar, citas). [Completada]
 - **Fase 2 (Front)**: Tema centralizado (`temas.dart`), enrutador declarativo (`go_router`), shell con barra de navegación inferior persistente (Servicios, Citas, Cuenta) y pantallas placeholder por dominio. [Completada]
-- **Fase 3 (Front)**: Autenticación y Cuentas (Login, Registro y Perfil). [Pendiente]
+- **Fase 3 (Front)**: Autenticación y Cuentas (Login, Registro con validación, Perfil con cerrar sesión, JWT y bcrypt). [Completada]
 - **Fase 4 (Front)**: Servicios, Lugares y Locales (Catálogo interactivo, plano de Plaza Central). [Pendiente]
 - **Fase 5 (Front)**: Agendamiento de citas (Selector manual y Asistente en lenguaje natural con IA). [Pendiente]
 - **Fase 6 (Front)**: Pulido visual, responsive y entrega final. [Pendiente]

@@ -66,3 +66,21 @@ Desde la terminal integrada de PowerShell:
 # Salida esperada: 200
 ```
 
+---
+
+## 5. Flujo de Autenticación (Fase 3)
+
+### Rutas de Auth en Backend
+- `POST /auth/registro` (o `/api/auth/registro`): Recibe `{ nombre, correo, contrasena, confirmacion }`. Valida mediante `src/tools/auth.ts`, hashea la contraseña con `bcrypt`, persiste en `data/usuarios.json` (detrás de `IUsuarioRepositorio`) y devuelve token JWT `{ ok: true, token, usuario }`.
+- `POST /auth/login` (o `/api/auth/login`): Recibe `{ correo, contrasena }`. Valida entrada, verifica hash con `bcrypt` y devuelve token JWT.
+- `GET /auth/yo` (o `/api/auth/yo`): Requiere encabezado `Authorization: Bearer <token>`. Valida JWT y responde con el usuario autenticado.
+
+### Flujo de Auth en Frontend (Flutter)
+- **Servicio (`AuthService`)**: Encapsula peticiones HTTP a la API sin interactuar con widgets.
+- **Estado de Sesión (`EstadoSesion`)**: Notificador observable (`ChangeNotifier`) de la sesión activa (`usuario`, `token`, `estaAutenticado`).
+- **Enrutamiento Protegido (`GoRouter`)**:
+  - Si `!estaAutenticado`: Redirige a `/login`. Solo se permite `/login` y `/registro`.
+  - Si `estaAutenticado`: Permite navegar por `/servicios`, `/citas` y `/cuenta`.
+- **Pestaña Cuenta**: Muestra nombre, correo y avatar del usuario, junto al botón *Cerrar Sesión* que invalida el token y regresa a `/login`.
+
+

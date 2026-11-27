@@ -1,12 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbia/main.dart';
+import 'package:orbia/features/auth/estado_sesion.dart';
 
 void main() {
-  testWidgets('OrbiaApp arranca correctamente en Servicios y muestra la barra de navegación', (WidgetTester tester) async {
+  testWidgets('Sin sesion, la app muestra la pantalla de Iniciar Sesion', (WidgetTester tester) async {
+    estadoSesion.cerrarSesion();
     await tester.pumpWidget(const OrbiaApp());
     await tester.pumpAndSettle();
-    expect(find.text('Servicios'), findsWidgets);
-    expect(find.text('Citas'), findsOneWidget);
-    expect(find.text('Cuenta'), findsOneWidget);
+
+    expect(find.text('Iniciar Sesión'), findsWidgets);
+    expect(find.text('Correo Electrónico'), findsOneWidget);
+    expect(find.text('Contraseña'), findsOneWidget);
+    expect(find.text('Ingresar'), findsOneWidget);
   });
 }

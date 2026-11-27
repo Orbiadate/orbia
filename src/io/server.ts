@@ -28,8 +28,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.static(path.join(__dirname, "../../public")));
 
 // Capa de API HTTP / JSON
-app.use("/api/tools", toolsRouter);
+app.use("/auth", authRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/tools", toolsRouter);
 app.use("/api/citas", citasRouter);
 app.use("/api", catalogoRouter);
 

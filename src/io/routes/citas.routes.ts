@@ -33,15 +33,15 @@ export function actualizarEstadoCitas(nuevas: Cita[]): void {
   estadoCitas = nuevas;
 }
 
-citasRouter.get("/", (req: Request, res: Response) => {
-  const usuario = resolverUsuarioActual(req);
+citasRouter.get("/", async (req: Request, res: Response) => {
+  const usuario = await resolverUsuarioActual(req);
   const nombreUsuario = usuario ? usuario.nombre : (req.query.usuario as string) || "carlos";
   const citas = consultarCitas(estadoCitas, nombreUsuario, { incluirCanceladas: true });
   res.json({ ok: true, citas });
 });
 
-citasRouter.post("/", (req: Request, res: Response) => {
-  const usuario = resolverUsuarioActual(req);
+citasRouter.post("/", async (req: Request, res: Response) => {
+  const usuario = await resolverUsuarioActual(req);
   const nombreUsuario = usuario ? usuario.nombre : (req.body?.usuario || "carlos");
   const { horarioId, horario } = req.body || {};
 
